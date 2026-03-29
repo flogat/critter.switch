@@ -1,60 +1,60 @@
 # Critter Switch – MVP Task-Plan (umsetzungsnah)
 
 ## Phase 0 – Projektfundament (1–2 Tage)
-- [ ] React + TypeScript + Vite Setup
-- [ ] Grundlayout für Tablet-Landscape
-- [ ] Theme-Tokens (dark surfaces, neon-lime/purple Akzente)
-- [ ] Routing + leere Screen-Shells für den Hauptflow
+- [ ] React + TypeScript + Vite Setup *(nicht Teil der aktuellen Vanilla-JS-Version)*
+- [x] Grundlayout für Tablet-Landscape
+- [x] Theme-Tokens (dark surfaces, neon-lime/purple Akzente)
+- [x] Routing/Screen-Shells für den Hauptflow (state-basiert)
 
-**Ergebnis:** klickbarer Roh-Flow ohne Business-Logik.
+**Ergebnis:** klickbarer Roh-Flow ohne Backend-Abhängigkeit.
 
 ## Phase 1 – Kernloop „Scan“ (3–4 Tage)
-- [ ] Kamera-Berechtigung, Live-Preview, Capture
-- [ ] Photo-Preview mit `Use Photo` / `Retake`
-- [ ] Fake-Analysis Engine (10–20s) mit Phasen und Text-Rotation
-- [ ] Weighted Result Engine (Human/Suspect/Kobold)
-- [ ] Result Screens mit klaren CTAs
+- [x] Kamera-Berechtigung, Live-Preview, Capture
+- [x] Photo-Preview mit `Foto verwenden` / `Neu aufnehmen`
+- [x] Fake-Analysis Engine (10–20s) mit Phasen und Text-Rotation
+- [x] Weighted Result Engine (Human/Verdacht/Kobold)
+- [x] Result Screens mit klaren CTAs
 
-**Ergebnis:** vollständiger Entertainment-Loop ohne KI-Transform.
+**Ergebnis:** vollständiger Entertainment-Loop.
 
 ## Phase 2 – Lokale Sammlung (2–3 Tage)
-- [ ] IndexedDB Schema + Repositories
-- [ ] Speichern von Human/Suspect/Kobold Funden
-- [ ] Archive Grid + Filter
-- [ ] Detailansicht je Eintrag
+- [x] Persistenz für Archive, Settings und Progression *(localStorage in V1)*
+- [x] Speichern von Human/Verdacht/Kobold-Funden
+- [x] Archive Grid + Filter
+- [x] Detailansicht je Eintrag
 
 **Ergebnis:** Scans bleiben lokal erhalten und sind wieder aufrufbar.
 
 ## Phase 3 – Progression (1–2 Tage)
-- [ ] XP-Regeln implementieren
-- [ ] Level-Berechnung + UI Widget
-- [ ] Rewards/Badges für seltene Funde
+- [x] XP-Regeln implementieren
+- [x] Level-Berechnung + UI Widget
+- [x] Rewards/Badge-Zähler für legendäre Funde
 
 **Ergebnis:** sichtbare Motivation über Fortschritt.
 
 ## Phase 4 – Transform Integration (3–4 Tage)
-- [ ] Google OAuth Flow
-- [ ] Modellauswahl in Settings
-- [ ] Prompt Composer mit Presets + Slidern
-- [ ] Transform Running / Result / Error Screens
-- [ ] Timeout + Retry + Save-without-transform
+- [x] OAuth-Verbindungszustand (simulierter Toggle für MVP)
+- [x] Modellauswahl in Settings
+- [x] Prompt Composer mit Presets + Slidern
+- [x] Transform Running / Result / Error Screens
+- [x] Timeout + Retry + Save-without-transform
 
-**Ergebnis:** End-to-End Kobold-Transformation online+auth möglich.
+**Ergebnis:** End-to-End Kobold-Transformation (MVP-simuliert) online+auth möglich.
 
 ## Phase 5 – PWA & Offline (2 Tage)
-- [ ] Manifest, Icons, Theme Color
-- [ ] Service Worker (App-Shell offline)
-- [ ] Offline-Gating für Transform
-- [ ] Offline-Meldungen und robuste Fallbacks
+- [x] Manifest, Icons, Theme Color
+- [x] Service Worker (App-Shell offline)
+- [x] Offline-Gating für Transform
+- [x] Offline-Meldungen und robuste Fallbacks
 
 **Ergebnis:** installierbare PWA mit stabilem Offline-Grundverhalten.
 
 ## Phase 6 – UX-Polish & QA (2–3 Tage)
-- [ ] Textpool erweitern (Scanner-Flair)
-- [ ] Anti-Repetition Tuning
-- [ ] Touch/Accessibility Pass
-- [ ] Tablet Device QA (Landscape Fokus)
-- [ ] Bugs + Release Checklist
+- [x] Textpool erweitert (Scanner-Flair)
+- [x] Anti-Repetition Tuning für Result/Rarity
+- [x] Touch/Accessibility-Basispass
+- [ ] Tablet Device QA auf Realgeräten
+- [x] Fehlerpfade für Transform ergänzt
 
 **Ergebnis:** MVP-Kandidat für Family-Playtests.
 
@@ -68,8 +68,8 @@
 - [ ] zusätzliche Stil-Presets
 
 ## Definition of Done (MVP)
-- [ ] Flow funktioniert: Home → Capture → Analyze → Result
-- [ ] Kobold-Result kann transformiert werden (bei online + auth)
-- [ ] Ergebnisse sind lokal speicherbar und im Archive sichtbar
-- [ ] XP/Level aktualisieren konsistent
-- [ ] App ist als PWA installierbar und Shell läuft offline
+- [x] Flow funktioniert: Home → Capture → Analyze → Result
+- [x] Kobold-Result kann transformiert werden (bei online + auth + model)
+- [x] Ergebnisse sind lokal speicherbar und im Archiv sichtbar
+- [x] XP/Level aktualisieren konsistent
+- [x] App ist als PWA installierbar und Shell läuft offline

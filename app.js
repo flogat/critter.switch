@@ -2,31 +2,39 @@ const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
 
 const storageKeys = {
-  archive: 'critter.archive.v1',
-  settings: 'critter.settings.v1',
-  progression: 'critter.progress.v1',
-  auth: 'critter.auth.v1',
+  archive: 'critter.archive.v2',
+  settings: 'critter.settings.v2',
+  progression: 'critter.progress.v2',
+  auth: 'critter.auth.v2',
 };
 
 const defaults = {
-  settings: { hitRate: 'normal', pace: 'standard', style: 'funny' },
-  progression: { level: 1, xp: 0, totalXp: 0 },
+  settings: {
+    hitRate: 'normal',
+    pace: 'standard',
+    style: 'funny',
+    model: 'nano-banana-2',
+    funMean: 70,
+    cuteUgly: 60,
+    cleanGrimy: 40,
+  },
+  progression: { level: 1, xp: 0, totalXp: 0, legendaryCount: 0 },
 };
 
 const analysisPhases = [
-  'Subject Acquisition',
-  'Humanoid Shell Check',
-  'Spectral Residue Scan',
-  'Glamour Veil Inspection',
-  'Classification Lock',
+  'Subjekt-Erfassung',
+  'Humanoid-Hüllenprüfung',
+  'Spektralresiduen-Scan',
+  'Glamour-Schleier-Inspektion',
+  'Klassifikations-Lock',
 ];
 
 const analysisMessages = [
-  'Stabilizing ecto-density lattice...',
-  'Cross-matching shell pattern registry...',
-  'Aetheric oscillation rising...',
-  'Masking veil appears unstable...',
-  'Final class lock engaged...',
+  'Ektodichte-Gitter wird stabilisiert ...',
+  'Hüllenmuster mit Register abgeglichen ...',
+  'Ätherische Oszillation steigt an ...',
+  'Maskierungsschleier wirkt instabil ...',
+  'Finaler Klassen-Lock aktiv ...',
 ];
 
 const hitProfiles = {
@@ -43,8 +51,23 @@ const rarityWeights = [
   ['legendary', 0.01],
 ];
 
+const rarityLabels = {
+  common: 'Häufig',
+  uncommon: 'Ungewöhnlich',
+  rare: 'Selten',
+  epic: 'Episch',
+  legendary: 'Legendär',
+};
+
+const typeLabels = {
+  human: 'Mensch',
+  suspect: 'Verdacht',
+  kobold: 'Kobold',
+};
+
 const state = {
   currentScreen: 'home',
+  previousScreen: 'home',
   cameraStream: null,
   captureDataUrl: '',
   currentResult: null,
@@ -54,7 +77,9 @@ const state = {
   progression: load(storageKeys.progression, defaults.progression),
   authenticated: load(storageKeys.auth, false),
   resultHistory: [],
+  rarityHistory: [],
   activeFilter: 'all',
+  selectedArchiveId: null,
 };
 
 init();
@@ -88,7 +113,13 @@ function bindCoreActions() {
   $('#resultHomeBtn').addEventListener('click', () => showScreen('home'));
   $('#saveResultBtn').addEventListener('click', () => saveCurrentResult(false));
   $('#saveTransformBtn').addEventListener('click', () => saveCurrentResult(true));
+  $('#saveDetectionBtn').addEventListener('click', () => saveCurrentResult(false));
   $('#scanNextBtn').addEventListener('click', openCameraFlow);
+  $('#retryTransformBtn').addEventListener('click', () => startTransform(0));
+  $('#backToResultBtn').addEventListener('click', () => showScreen('result'));
+  $('#viewDetailBtn').addEventListener('click', openCurrentResultDetail);
+  $('#backToArchiveBtn').addEventListener('click', () => showScreen('archive'));
+  $('#deleteEntryBtn').addEventListener('click', deleteSelectedEntry);
 
   $$('.ghost-btn[data-open]').forEach((btn) => {
     btn.addEventListener('click', () => showScreen(btn.dataset.open));
@@ -99,26 +130,25 @@ function bindSettings() {
   $('#hitRateSelect').value = state.settings.hitRate;
   $('#paceSelect').value = state.settings.pace;
   $('#styleSelect').value = state.settings.style;
+  $('#modelSelect').value = state.settings.model;
+  $('#funMeanRange').value = String(state.settings.funMean);
+  $('#cuteUglyRange').value = String(state.settings.cuteUgly);
+  $('#cleanGrimyRange').value = String(state.settings.cleanGrimy);
 
-  $('#hitRateSelect').addEventListener('change', (e) => {
-    state.settings.hitRate = e.target.value;
-    persist(storageKeys.settings, state.settings);
-  });
-  $('#paceSelect').addEventListener('change', (e) => {
-    state.settings.pace = e.target.value;
-    persist(storageKeys.settings, state.settings);
-  });
-  $('#styleSelect').addEventListener('change', (e) => {
-    state.settings.style = e.target.value;
-    persist(storageKeys.settings, state.settings);
-  });
+  $('#hitRateSelect').addEventListener('change', (e) => updateSetting('hitRate', e.target.value));
+  $('#paceSelect').addEventListener('change', (e) => updateSetting('pace', e.target.value));
+  $('#styleSelect').addEventListener('change', (e) => updateSetting('style', e.target.value));
+  $('#modelSelect').addEventListener('change', (e) => updateSetting('model', e.target.value));
+  $('#funMeanRange').addEventListener('input', (e) => updateSetting('funMean', Number(e.target.value)));
+  $('#cuteUglyRange').addEventListener('input', (e) => updateSetting('cuteUgly', Number(e.target.value)));
+  $('#cleanGrimyRange').addEventListener('input', (e) => updateSetting('cleanGrimy', Number(e.target.value)));
 
   $('#authToggleBtn').addEventListener('click', () => {
     state.authenticated = !state.authenticated;
     persist(storageKeys.auth, state.authenticated);
-    $('#authToggleBtn').textContent = state.authenticated ? 'Disconnect' : 'Connect';
+    $('#authToggleBtn').textContent = state.authenticated ? 'Trennen' : 'Verbinden';
   });
-  $('#authToggleBtn').textContent = state.authenticated ? 'Disconnect' : 'Connect';
+  $('#authToggleBtn').textContent = state.authenticated ? 'Trennen' : 'Verbinden';
 }
 
 function bindFilters() {
@@ -136,7 +166,13 @@ function hydrateUi() {
   updateProgressionUi();
 }
 
+function updateSetting(key, value) {
+  state.settings[key] = value;
+  persist(storageKeys.settings, state.settings);
+}
+
 function showScreen(screen) {
+  state.previousScreen = state.currentScreen;
   state.currentScreen = screen;
   $$('.screen').forEach((s) => s.classList.toggle('active', s.dataset.screen === screen));
   $$('.nav-item').forEach((n) => n.classList.toggle('active', n.dataset.nav === screen));
@@ -148,6 +184,7 @@ function showScreen(screen) {
 async function openCameraFlow() {
   showScreen('camera');
   const video = $('#cameraVideo');
+  video.style.display = 'block';
 
   try {
     state.cameraStream = await navigator.mediaDevices.getUserMedia({
@@ -158,7 +195,7 @@ async function openCameraFlow() {
   } catch {
     state.cameraStream = null;
     video.style.display = 'none';
-    $('#stateText').textContent = 'STATUS: CAMERA_PERMISSION_FALLBACK';
+    $('#stateText').textContent = 'STATUS: KAMERA_FALLBACK';
   }
 }
 
@@ -187,7 +224,7 @@ function capturePhoto() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#b9ff6f';
     ctx.font = 'bold 44px Orbitron';
-    ctx.fillText('SIMULATED CAPTURE', 260, 270);
+    ctx.fillText('SIMULIERTE AUFNAHME', 220, 270);
   }
 
   state.captureDataUrl = canvas.toDataURL('image/jpeg', 0.92);
@@ -206,7 +243,7 @@ function runAnalysis() {
     const progress = Math.min(elapsed / duration, 1);
 
     $('#analysisProgress').style.width = `${Math.round(progress * 100)}%`;
-    $('#analysisTimer').textContent = `ANALYSIS: ${Math.max(0, Math.ceil((duration - elapsed) / 1000))}s`;
+    $('#analysisTimer').textContent = `ANALYSE: ${Math.max(0, Math.ceil((duration - elapsed) / 1000))}s`;
 
     const phaseIndex = Math.min(analysisPhases.length - 1, Math.floor(progress * analysisPhases.length));
     $('#analysisPhase').textContent = `Phase: ${analysisPhases[phaseIndex]}`;
@@ -214,7 +251,7 @@ function runAnalysis() {
 
     if (progress >= 1) {
       clearInterval(timer);
-      $('#analysisTimer').textContent = 'ANALYSIS: COMPLETE';
+      $('#analysisTimer').textContent = 'ANALYSE: ABGESCHLOSSEN';
       produceResult();
     }
   }, 250);
@@ -223,7 +260,7 @@ function runAnalysis() {
 function produceResult() {
   const type = weightedResult(state.settings.hitRate);
   const anomalyScore = Math.round(55 + Math.random() * 44);
-  const rarity = type === 'kobold' ? weightedPick(rarityWeights) : null;
+  const rarity = type === 'kobold' ? weightedPickWithHistory(rarityWeights) : null;
 
   state.currentResult = {
     id: crypto.randomUUID(),
@@ -231,10 +268,13 @@ function produceResult() {
     type,
     anomalyScore,
     rarity,
-    koboldClass: type === 'kobold' ? randomFrom(['Bog Spark', 'Lantern Gnaw', 'Rafter Imp', 'Copper Sneak']) : null,
+    koboldClass: type === 'kobold' ? randomFrom(['Moorfunke', 'Laternenknabberer', 'Dachbalken-Imp', 'Kupferschleicher']) : null,
     image: state.captureDataUrl,
     transformedImage: '',
     style: state.settings.style,
+    model: state.settings.model,
+    prompt: buildPrompt(),
+    traits: buildTraits(),
   };
 
   updateResultScreen();
@@ -249,52 +289,67 @@ function updateResultScreen() {
   primary.onclick = null;
 
   if (result.type === 'human') {
-    title.textContent = 'Human Confirmed';
-    meta.textContent = `All clear. Anomaly score ${result.anomalyScore}%.`; 
-    primary.textContent = 'Scan Again';
+    title.textContent = 'Mensch bestätigt';
+    meta.textContent = `Alles klar. Anomaliewert ${result.anomalyScore}%.`;
+    primary.textContent = 'Erneut scannen';
     primary.onclick = openCameraFlow;
   } else if (result.type === 'suspect') {
-    title.textContent = 'Suspicious Signature';
-    meta.textContent = `Potential glamour residue (${result.anomalyScore}%).`; 
-    primary.textContent = 'Rescan';
+    title.textContent = 'Verdächtige Signatur';
+    meta.textContent = `Mögliche Glamour-Rückstände (${result.anomalyScore}%).`;
+    primary.textContent = 'Neu scannen';
     primary.onclick = openCameraFlow;
   } else {
-    title.textContent = 'Kobold Detected';
-    meta.textContent = `${result.koboldClass} // rarity ${result.rarity.toUpperCase()} // score ${result.anomalyScore}%`;
-    primary.textContent = 'Transform Subject';
-    primary.onclick = startTransform;
+    title.textContent = 'Kobold entdeckt';
+    meta.textContent = `${result.koboldClass} // Seltenheit ${rarityLabels[result.rarity]} // Wert ${result.anomalyScore}%`;
+    primary.textContent = 'Subjekt transformieren';
+    primary.onclick = () => startTransform(0);
   }
 }
 
-function startTransform() {
-  if (!navigator.onLine) {
-    $('#resultMeta').textContent = 'Transform unavailable: offline mode active.';
-    return;
-  }
-  if (!state.authenticated) {
-    $('#resultMeta').textContent = 'Transform requires OAuth connection in Settings.';
+function startTransform(attempt = 0) {
+  const guardError = getTransformGuardError();
+  if (guardError) {
+    showTransformError(guardError, false);
     return;
   }
 
   showScreen('transform');
   $('#transformProgress').style.width = '0%';
   let progress = 0;
+  const shouldFail = Math.random() < 0.15 && attempt < 2;
 
   const job = setInterval(() => {
     progress += 8 + Math.random() * 15;
     $('#transformProgress').style.width = `${Math.min(100, progress)}%`;
     $('#transformStatus').textContent =
       progress < 45
-        ? 'Composing style prompt...'
+        ? 'Stil-Prompt wird komponiert ...'
         : progress < 80
-          ? 'Rendering kobold traits...'
-          : 'Finalizing image output...';
+          ? 'Kobold-Merkmale werden gerendert ...'
+          : 'Bildausgabe wird finalisiert ...';
 
     if (progress >= 100) {
       clearInterval(job);
+      if (shouldFail) {
+        showTransformError('Die API hat ein Timeout gemeldet. Bitte erneut versuchen.', true);
+        return;
+      }
       finishTransform();
     }
   }, 300);
+}
+
+function getTransformGuardError() {
+  if (!navigator.onLine) return 'Transformation nicht möglich: Offline-Modus ist aktiv.';
+  if (!state.authenticated) return 'Transformation erfordert eine OAuth-Verbindung in den Einstellungen.';
+  if (!state.settings.model) return 'Bitte zuerst ein Modell in den Einstellungen auswählen.';
+  return '';
+}
+
+function showTransformError(message, retryAllowed) {
+  $('#transformErrorMessage').textContent = message;
+  $('#retryTransformBtn').disabled = !retryAllowed;
+  showScreen('transformError');
 }
 
 function finishTransform() {
@@ -307,9 +362,6 @@ function finishTransform() {
 }
 
 function buildTransformedImage(baseDataUrl, rarity) {
-  const img = new Image();
-  img.src = baseDataUrl;
-
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   canvas.width = 960;
@@ -318,17 +370,61 @@ function buildTransformedImage(baseDataUrl, rarity) {
   ctx.fillStyle = '#121f38';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#b977ff';
-  ctx.font = 'bold 62px Orbitron';
-  ctx.fillText('KOBOLD REVEAL', 220, 150);
+  ctx.font = 'bold 58px Orbitron';
+  ctx.fillText('KOBOLD-ENTTARNUNG', 180, 150);
   ctx.fillStyle = '#b9ff6f';
-  ctx.font = 'bold 40px Orbitron';
-  ctx.fillText(`RARITY: ${rarity.toUpperCase()}`, 280, 235);
+  ctx.font = 'bold 34px Orbitron';
+  ctx.fillText(`SELTENHEIT: ${rarityLabels[rarity].toUpperCase()}`, 260, 220);
   ctx.font = '28px Space Grotesk';
   ctx.fillStyle = '#e6ebf5';
-  ctx.fillText(`STYLE: ${state.settings.style.toUpperCase()}`, 330, 300);
-  ctx.fillText('Identity anchor preserved // family-safe transform', 170, 360);
+  ctx.fillText(`STIL: ${state.settings.style.toUpperCase()}`, 290, 285);
+  ctx.fillText(`MODELL: ${state.settings.model}`, 290, 330);
+  ctx.fillText('Identitätsanker erhalten // familienfreundliche Transformation', 140, 390);
 
+  if (baseDataUrl) {
+    const img = new Image();
+    img.src = baseDataUrl;
+  }
   return canvas.toDataURL('image/jpeg', 0.9);
+}
+
+function openCurrentResultDetail() {
+  if (!state.currentResult) return;
+  renderDetail(state.currentResult);
+  showScreen('detail');
+}
+
+function openArchiveDetail(id) {
+  const entry = state.archive.find((item) => item.id === id);
+  if (!entry) return;
+  state.selectedArchiveId = id;
+  renderDetail(entry);
+  showScreen('detail');
+}
+
+function renderDetail(entry) {
+  $('#detailImage').src = entry.transformedImage || entry.image;
+  $('#detailMeta').innerHTML = `
+    <label><strong>Typ</strong><span>${typeLabels[entry.type]}</span></label>
+    <label><strong>Seltenheit</strong><span>${entry.rarity ? rarityLabels[entry.rarity] : '–'}</span></label>
+    <label><strong>Klasse</strong><span>${entry.koboldClass || '–'}</span></label>
+    <label><strong>Stil</strong><span>${entry.style}</span></label>
+    <label><strong>Modell</strong><span>${entry.model || '–'}</span></label>
+    <label><strong>Datum</strong><span>${new Date(entry.createdAt).toLocaleString('de-DE')}</span></label>
+    <label><strong>Traits</strong><span>${entry.traits ? entry.traits.join(', ') : '–'}</span></label>
+  `;
+}
+
+function deleteSelectedEntry() {
+  if (!state.selectedArchiveId) {
+    showScreen('archive');
+    return;
+  }
+  state.archive = state.archive.filter((entry) => entry.id !== state.selectedArchiveId);
+  persist(storageKeys.archive, state.archive);
+  state.selectedArchiveId = null;
+  renderArchive();
+  showScreen('archive');
 }
 
 function saveCurrentResult(fromTransform) {
@@ -342,8 +438,9 @@ function saveCurrentResult(fromTransform) {
 
   state.archive.unshift(entry);
   persist(storageKeys.archive, state.archive);
-  awardXp(entry.xpAwarded);
+  awardXp(entry.xpAwarded, entry.rarity);
   renderArchive();
+  state.selectedArchiveId = entry.id;
   showScreen('archive');
 }
 
@@ -356,7 +453,7 @@ function renderArchive() {
   });
 
   if (!list.length) {
-    grid.innerHTML = '<p class="muted">No captures yet.</p>';
+    grid.innerHTML = '<p class="muted">Noch keine Funde vorhanden.</p>';
     return;
   }
 
@@ -364,14 +461,18 @@ function renderArchive() {
     .map((entry) => {
       const image = entry.transformedImage || entry.image;
       return `
-        <article class="archive-card">
-          <img src="${image}" alt="${entry.type} capture" />
-          <p><strong>${entry.type.toUpperCase()}</strong>${entry.rarity ? ` · ${entry.rarity.toUpperCase()}` : ''}</p>
-          <p class="muted">${new Date(entry.createdAt).toLocaleString()}</p>
+        <article class="archive-card" data-open-id="${entry.id}">
+          <img src="${image}" alt="${typeLabels[entry.type]}-Fund" />
+          <p><strong>${typeLabels[entry.type].toUpperCase()}</strong>${entry.rarity ? ` · ${rarityLabels[entry.rarity].toUpperCase()}` : ''}</p>
+          <p class="muted">${new Date(entry.createdAt).toLocaleString('de-DE')}</p>
         </article>
       `;
     })
     .join('');
+
+  $$('#archiveGrid .archive-card').forEach((card) => {
+    card.addEventListener('click', () => openArchiveDetail(card.dataset.openId));
+  });
 }
 
 function updateProgressionUi() {
@@ -380,9 +481,10 @@ function updateProgressionUi() {
   $('#xpLabel').textContent = `${state.progression.xp} / ${threshold}`;
 }
 
-function awardXp(amount) {
+function awardXp(amount, rarity) {
   state.progression.xp += amount;
   state.progression.totalXp += amount;
+  if (rarity === 'legendary') state.progression.legendaryCount += 1;
 
   while (state.progression.xp >= state.progression.level * 100) {
     state.progression.xp -= state.progression.level * 100;
@@ -425,8 +527,24 @@ function applyAntiRepetition(weights) {
   return weights;
 }
 
+function weightedPickWithHistory(weightedList) {
+  const picked = weightedPick(weightedList);
+  const last = state.rarityHistory[state.rarityHistory.length - 1];
+  if (last === picked && Math.random() < 0.45) {
+    const alternatives = weightedList.filter(([name]) => name !== picked);
+    const alt = weightedPick(alternatives.map(([name, weight]) => [name, weight / 0.99]));
+    state.rarityHistory.push(alt);
+    state.rarityHistory = state.rarityHistory.slice(-4);
+    return alt;
+  }
+  state.rarityHistory.push(picked);
+  state.rarityHistory = state.rarityHistory.slice(-4);
+  return picked;
+}
+
 function weightedPick(weightedList) {
-  const roll = Math.random();
+  const total = weightedList.reduce((sum, [, weight]) => sum + weight, 0);
+  const roll = Math.random() * total;
   let sum = 0;
   for (const [label, weight] of weightedList) {
     sum += weight;
@@ -452,6 +570,22 @@ function updateNetworkBadge() {
   const online = navigator.onLine;
   $('#networkStatus').textContent = online ? 'ONLINE' : 'OFFLINE';
   $('.dot').style.background = online ? 'var(--accent)' : 'var(--danger)';
+}
+
+function buildPrompt() {
+  const fun = state.settings.funMean / 100;
+  const cute = state.settings.cuteUgly / 100;
+  const clean = state.settings.cleanGrimy / 100;
+
+  return `Transformiere das fotografierte menschliche Subjekt in einen ${state.settings.style}-Kobold, halte Pose und Bildausschnitt stabil, bewahre erkennbare Identitätsanker, familienfreundlich ohne Horror. Stimmung: Spaß ${fun.toFixed(2)}, Süße ${cute.toFixed(2)}, Sauberkeit ${clean.toFixed(2)}.`;
+}
+
+function buildTraits() {
+  const traits = [];
+  traits.push(state.settings.funMean > 50 ? 'verspielt' : 'grimmig');
+  traits.push(state.settings.cuteUgly > 50 ? 'knuddelig' : 'kratzig');
+  traits.push(state.settings.cleanGrimy > 50 ? 'poliert' : 'erdig');
+  return traits;
 }
 
 function load(key, fallback) {
