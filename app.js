@@ -388,7 +388,13 @@ function runAnalysis() {
     if (progress >= 1) {
       clearInterval(timer);
       $('#analysisTimer').textContent = 'ANALYSE: ABGESCHLOSSEN';
-      produceResult();
+      try {
+        produceResult();
+      } catch (error) {
+        console.error('Analyseabschluss fehlgeschlagen:', error);
+        const message = error?.message ? ` (${error.message})` : '';
+        $('#analysisMessage').textContent = `Analyseabschluss fehlgeschlagen${message}. Bitte erneut scannen.`;
+      }
     }
   }, 250);
 }
@@ -399,7 +405,7 @@ function produceResult() {
   const rarity = type === 'kobold' ? weightedPickWithHistory(rarityWeights) : null;
 
   state.currentResult = {
-    id: crypto.randomUUID(),
+    id: generateResultId(),
     createdAt: new Date().toISOString(),
     type,
     anomalyScore,
@@ -418,6 +424,12 @@ function produceResult() {
   updateResultScreen();
   syncCurrentResultToArchive();
   showScreen('result');
+}
+
+function generateResultId() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  const random = Math.random().toString(36).slice(2, 10);
+  return `scan-${Date.now()}-${random}`;
 }
 
 function updateResultScreen() {
