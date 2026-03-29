@@ -1,93 +1,130 @@
-# Critter Switch – Prompt-Design für Kobold-Transformation
+# Critter Switch – Prompt-Design für Kobold-Transformation (V1)
 
-## 1) Zielsetzung
+## 1) Ziel des Prompting-Systems
 
-Die Transformation soll die fotografierte Person als humorvollen Kobold zeigen, mit subtiler Wiedererkennbarkeit (Identity Anchor), family-safe und nicht-horrorhaft.
+Die Transformation soll die fotografierte Person als Kobold „enttarnen“, nicht ersetzen:
+- **subtile Wiedererkennbarkeit** (Identity Anchor)
+- **humorvoll/family-safe** statt Horror
+- **Framing und Pose** möglichst erhalten
 
 ## 2) Prompt-Bausteine
 
-## A. Base Intent
-- "humanoid subject revealed as disguised kobold"
-- "mischievous fantasy creature transformation"
+## A) Base Intent
+- detected humanoid glamoured kobold
+- reveal disguised fantasy critter persona
 
-## B. Identity Anchor
-- "preserve subtle recognizable facial structure and expression"
-- "retain pose, framing, and key identity cues"
+## B) Identity Anchor
+- preserve subtle recognizable facial structure
+- keep slight resemblance and key expression cues
 
-## C. Style Preset
+## C) Style Layer
 - Funny
 - Creepy-light
 - Mischievous
 - Wild
 - Noble
 
-## D. Safety/Tone
-- "family-friendly fantasy art, non-graphic, non-horror"
+## D) Safety Layer
+- family-friendly fantasy creature
+- non-graphic, non-horror, no gore
 
-## E. Composition
-- "same composition as source image"
-- "subject-centered portrait continuity"
+## E) Composition Lock
+- retain original framing and subject position
+- preserve pose continuity where possible
 
-## 3) Negative Constraints
+## 3) Negativvorgaben (immer aktiv)
 
 - avoid gore
-- avoid dismemberment
-- avoid extreme horror realism
-- avoid anatomy corruption (extra limbs/faces)
-- avoid total identity replacement
+- avoid realistic horror
+- avoid full identity replacement
+- avoid extra limbs / broken anatomy
+- avoid grotesque body distortions
 
-## 4) Master Template
+## 4) Master Prompt Template
 
 ```text
 Transform the photographed human subject into a [STYLE_PRESET] kobold while preserving subtle identity cues.
-Keep the same pose and framing from the original image.
-The kobold should look humorous and expressive, family-friendly, and clearly fantasy.
-Maintain light facial resemblance and recognizable structure.
-Add thematic kobold traits (ears, skin texture, mischievous expression) without horror.
-Visual tone: cinematic dark-tech fantasy, playful not disturbing.
+Keep the same framing and pose as the source image.
+Maintain light recognizable facial structure and expression anchors.
+The result should be playful, mischievous, family-friendly fantasy and not horror.
+Add kobold traits (ears, texture, eyes, expression) without extreme anatomy distortion.
+Visual tone: dark-tech magical scanner universe, cinematic but humorous.
 ```
 
-## 5) Preset Add-ons
+## 5) Style Presets (Zusatzmodule)
 
 ## Funny
-- "playful grin, exaggerated but friendly features, bright mischievous eyes"
+- friendly grin
+- playful eyes
+- softened creature features
 
 ## Creepy-light
-- "slightly eerie but safe, whimsical shadows, no horror"
+- slightly eerie, still safe
+- whimsical shadowing
+- no threatening horror tone
 
 ## Mischievous
-- "trickster energy, sly expression, agile goblin-like posture"
+- sly expression
+- trickster vibe
+- agile goblin energy
 
 ## Wild
-- "feral styling, messy textures, energetic creature vibe"
+- rough textures
+- feral but comedic appearance
+- high-energy creature traits
 
 ## Noble
-- "regal magical kobold, elegant adornments, controlled expression"
+- regal magical kobold
+- ornamental fantasy details
+- composed expression
 
-## 6) Slider Mapping
+## 6) Slider-Mapping
 
-- `Fun ↔ Mean`: controls expression warmth vs sharpness
-- `Cute ↔ Ugly`: controls feature softness vs roughness
-- `Clean fantasy ↔ Grimy creature`: controls texture cleanliness
+## `Fun ↔ Mean`
+- fun: warm, goofy, approachable
+- mean: sharper expression, still family-safe
 
-## 7) Runtime Prompt Composer (Pseudo)
+## `Cute ↔ Ugly`
+- cute: rounder forms, softer details
+- ugly: rougher texture and facial exaggeration
+
+## `Clean fantasy ↔ Grimy creature`
+- clean: polished magical look
+- grimy: dirtier texture, rugged details
+
+## 7) Runtime Composer (Pseudo-API)
 
 ```ts
-buildPrompt({ style, funMean, cuteUgly, cleanGrimy, preserveIdentity = true })
+type PromptInput = {
+  style: 'funny' | 'creepy-light' | 'mischievous' | 'wild' | 'noble';
+  funMean: number;      // 0..1
+  cuteUgly: number;     // 0..1
+  cleanGrimy: number;   // 0..1
+  preserveIdentity: boolean;
+};
+
+buildPrompt(input: PromptInput): {
+  prompt: string;
+  negativePrompt: string;
+};
 ```
 
-Output sections:
-1. Base intent
-2. Identity anchor sentence
-3. Style sentence
-4. Slider-influenced modifiers
-5. Safety sentence
-6. Composition lock sentence
+## 8) Qualitätskriterien pro Ergebnisbild
 
-## 8) QA Checklist per Generated Image
+- Person ist noch leicht erkennbar
+- Ergebnis entspricht ausgewähltem Stil
+- kein Horror/Gore/NSFW
+- Pose und Bildkomposition wirken konsistent
+- Gesamteindruck: „lustig-mysteriös“
 
-- Subject remains lightly recognizable
-- No prohibited content (gore/horror)
-- Style matches selected preset
-- Framing preserved
-- Result is humorous or playful, not disturbing
+## 9) Fehler- und Fallback-Strategie
+
+Wenn Generierung fehlschlägt:
+- klassifiziertes Originalergebnis erhalten
+- Retry anbieten
+- ohne Transform speichern erlauben
+
+Wenn Ergebnis zu weit vom Ziel abweicht:
+- identitätsstärkere Prompt-Variante verwenden
+- Stilintensität reduzieren
+- negativen Prompt um „avoid full face replacement“ verstärken
