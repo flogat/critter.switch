@@ -31,16 +31,13 @@ const koboldClasses = [
 
 const defaults = {
   settings: {
-    hitRate: 'normal',
     koboldChance: 35,
-    pace: 'standard',
     style: 'funny',
     model: 'gemini-3.1-flash-image-preview',
     funMean: 70,
     cuteUgly: 60,
     cleanGrimy: 40,
     apiBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent',
-    authMode: 'apiKey',
     apiKey: '',
     autoSaveBehavior: 'ask',
     sortOrder: 'newest',
@@ -161,6 +158,7 @@ function bindCoreActions() {
   $('#compareToggleBtn').addEventListener('click', toggleCompareImage);
   $('#shareEntryBtn').addEventListener('click', shareSelectedEntry);
   $('#downloadDetailBtn').addEventListener('click', downloadSelectedEntryImage);
+  $('#detailCompareRange').addEventListener('input', (e) => updateDetailCompare(e.target.value));
 
   $$('.ghost-btn[data-open]').forEach((btn) => {
     btn.addEventListener('click', () => showScreen(btn.dataset.open));
@@ -168,35 +166,27 @@ function bindCoreActions() {
 }
 
 function bindSettings() {
-  $('#hitRateSelect').value = state.settings.hitRate;
   $('#koboldChanceRange').value = String(state.settings.koboldChance ?? defaults.settings.koboldChance);
   $('#koboldChanceValue').textContent = `${state.settings.koboldChance ?? defaults.settings.koboldChance}%`;
-  $('#paceSelect').value = state.settings.pace;
   $('#styleSelect').value = state.settings.style;
   $('#modelSelect').value = state.settings.model;
   $('#funMeanRange').value = String(state.settings.funMean);
   $('#cuteUglyRange').value = String(state.settings.cuteUgly);
   $('#cleanGrimyRange').value = String(state.settings.cleanGrimy);
-  $('#apiBaseUrlInput').value = getEffectiveApiBaseUrl();
-  $('#authModeSelect').value = state.settings.authMode;
   $('#apiKeyInput').value = state.settings.apiKey;
   $('#autoSaveSelect').value = state.settings.autoSaveBehavior;
   $('#sortOrderSelect').value = state.settings.sortOrder;
 
-  $('#hitRateSelect').addEventListener('change', (e) => updateSetting('hitRate', e.target.value));
   $('#koboldChanceRange').addEventListener('input', (e) => {
     const value = Number(e.target.value);
     $('#koboldChanceValue').textContent = `${value}%`;
     updateSetting('koboldChance', value);
   });
-  $('#paceSelect').addEventListener('change', (e) => updateSetting('pace', e.target.value));
   $('#styleSelect').addEventListener('change', (e) => updateSetting('style', e.target.value));
   $('#modelSelect').addEventListener('change', (e) => updateSetting('model', e.target.value));
   $('#funMeanRange').addEventListener('input', (e) => updateSetting('funMean', Number(e.target.value)));
   $('#cuteUglyRange').addEventListener('input', (e) => updateSetting('cuteUgly', Number(e.target.value)));
   $('#cleanGrimyRange').addEventListener('input', (e) => updateSetting('cleanGrimy', Number(e.target.value)));
-  $('#apiBaseUrlInput').addEventListener('change', (e) => updateSetting('apiBaseUrl', e.target.value.trim()));
-  $('#authModeSelect').addEventListener('change', (e) => updateSetting('authMode', e.target.value));
   $('#apiKeyInput').addEventListener('change', (e) => updateSetting('apiKey', e.target.value.trim()));
   $('#autoSaveSelect').addEventListener('change', (e) => updateSetting('autoSaveBehavior', e.target.value));
   $('#sortOrderSelect').addEventListener('change', (e) => {
@@ -371,7 +361,7 @@ function capturePhoto() {
 
 function runAnalysis() {
   showScreen('analysis');
-  const duration = paceToDuration(state.settings.pace);
+  const duration = 14_000;
   const started = Date.now();
 
   const timer = setInterval(() => {
@@ -400,7 +390,7 @@ function runAnalysis() {
 }
 
 function produceResult() {
-  const type = weightedResult(state.settings.hitRate);
+  const type = weightedResult();
   const anomalyScore = Math.round(55 + Math.random() * 44);
   const rarity = type === 'kobold' ? weightedPickWithHistory(rarityWeights) : null;
 
@@ -504,7 +494,7 @@ async function startTransform(attempt = 0) {
 function getTransformGuardError() {
   if (!navigator.onLine) return 'Transformation nicht möglich: Offline-Modus ist aktiv.';
   if (!state.settings.model) return 'Bitte zuerst ein Modell in den Einstellungen auswählen.';
-  if (state.settings.authMode === 'apiKey' && !state.settings.apiKey) {
+  if (!state.settings.apiKey) {
     return 'Bitte zuerst einen Google API Key in den Einstellungen hinterlegen.';
   }
   return '';
@@ -538,6 +528,11 @@ function toggleCompareImage() {
   $('#compareToggleBtn').textContent = state.comparingAfter ? 'Vorher anzeigen' : 'Nachher anzeigen';
 }
 
+function updateDetailCompare(value) {
+  const clamped = Math.min(100, Math.max(0, Number(value) || 0));
+  $('#detailAfterImage').style.clipPath = `inset(0 ${100 - clamped}% 0 0)`;
+}
+
 function openCurrentResultDetail() {
   if (!state.currentResult) return;
   renderDetail(state.currentResult);
@@ -554,7 +549,15 @@ function openArchiveDetail(id) {
 
 function renderDetail(entry) {
   const captureMeta = entry.captureMeta || {};
-  $('#detailImage').src = getEntryImage(entry);
+  const beforeImage = entry.image || buildArchivePlaceholder(entry.hasImageFallback);
+  const afterImage = entry.transformedImage || beforeImage;
+  $('#detailBeforeImage').src = beforeImage;
+  $('#detailAfterImage').src = afterImage;
+  const compareAvailable = Boolean(entry.transformedImage && entry.image);
+  $('#detailCompareControl').style.display = compareAvailable ? 'grid' : 'none';
+  $('#detailCompare').classList.toggle('single-image', !compareAvailable);
+  $('#detailCompareRange').value = '100';
+  updateDetailCompare(100);
   $('#detailMeta').innerHTML = `
     <label><strong>Typ</strong><span>${typeLabels[entry.type]}</span></label>
     <label><strong>Seltenheit</strong><span>${entry.rarity ? rarityLabels[entry.rarity] : '–'}</span></label>
@@ -615,11 +618,20 @@ function renderArchive() {
   grid.innerHTML = list
     .map((entry) => {
       const image = getEntryImage(entry);
+      const beforeImage = entry.image || buildArchivePlaceholder(entry.hasImageFallback);
+      const afterImage = entry.transformedImage || beforeImage;
       const captureMeta = entry.captureMeta || {};
       const ratio = Number(captureMeta.width) > 0 && Number(captureMeta.height) > 0 ? `${captureMeta.width} / ${captureMeta.height}` : '16 / 10';
+      const compareCard = entry.transformedImage
+        ? `
+          <div class="archive-compare" style="--capture-ratio:${ratio};">
+            <img src="${beforeImage}" alt="Vorher" />
+            <img src="${afterImage}" alt="Nachher" />
+          </div>`
+        : `<img src="${image}" alt="${typeLabels[entry.type]}-Fund" style="--capture-ratio:${ratio};" />`;
       return `
         <article class="archive-card" data-open-id="${entry.id}">
-          <img src="${image}" alt="${typeLabels[entry.type]}-Fund" style="--capture-ratio:${ratio};" />
+          ${compareCard}
           <p><strong>${typeLabels[entry.type].toUpperCase()}</strong>${entry.rarity ? ` · ${rarityLabels[entry.rarity].toUpperCase()}` : ''}</p>
           <p class="archive-format">${captureMeta.formatLabel || 'Format unbekannt'} · ${captureMeta.orientationLabel || 'Ausrichtung unbekannt'}</p>
           <p class="muted">${new Date(entry.createdAt).toLocaleString('de-DE')}</p>
@@ -682,7 +694,7 @@ function awardXp(amount, rarity) {
   updateProgressionUi();
 }
 
-function weightedResult(profile) {
+function weightedResult(profile = 'normal') {
   const baseWeights = hitProfiles[profile] || hitProfiles.normal;
   const weights = applyKoboldChance(baseWeights, state.settings.koboldChance);
   const penalized = applyAntiRepetition(weights);
@@ -754,12 +766,6 @@ function weightedPick(weightedList) {
   return weightedList[0][0];
 }
 
-function paceToDuration(pace) {
-  if (pace === 'short') return 10_000;
-  if (pace === 'dramatic') return 20_000;
-  return 14_000;
-}
-
 function xpForResult(result) {
   if (result.type === 'human') return 8;
   if (result.type === 'suspect') return 12;
@@ -785,9 +791,7 @@ async function requestTransformFromApi() {
   const endpoint = withGoogleApiKey(resolveGeminiEndpoint(getEffectiveApiBaseUrl(), state.settings.model), state.settings.apiKey);
   const payload = buildGoogleTransformPayload();
   const headers = { 'Content-Type': 'application/json' };
-  if (state.settings.authMode === 'apiKey' && state.settings.apiKey) {
-    headers['x-goog-api-key'] = state.settings.apiKey;
-  }
+  if (state.settings.apiKey) headers['x-goog-api-key'] = state.settings.apiKey;
 
   const response = await fetch(endpoint, {
     method: 'POST',
@@ -807,7 +811,7 @@ async function requestTransformFromApi() {
 }
 
 function getEffectiveApiBaseUrl() {
-  return state.settings.apiBaseUrl?.trim() || defaults.settings.apiBaseUrl;
+  return defaults.settings.apiBaseUrl;
 }
 
 

@@ -234,6 +234,20 @@ video,
   border: 1px solid #36517f;
 }
 
+.archive-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.archive-compare img {
+  width: 100%;
+  aspect-ratio: var(--capture-ratio, 16 / 10);
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #36517f;
+}
+
 .archive-format {
   font-size: 0.78rem;
   color: var(--muted);
@@ -333,6 +347,31 @@ body.camera-mode .screen:not([data-screen='camera']) {
   border: 1px solid #d7deeb4f;
 }
 
+.camera-branding {
+  position: absolute;
+  top: max(56px, calc(env(safe-area-inset-top) + 46px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  margin: 0;
+  letter-spacing: 0.2em;
+  font-size: 0.72rem;
+  color: #d8dfef;
+  text-shadow: 0 2px 10px #000;
+}
+
+.camera-frame {
+  position: absolute;
+  left: max(8px, env(safe-area-inset-left));
+  right: max(8px, env(safe-area-inset-right));
+  top: max(8px, env(safe-area-inset-top));
+  bottom: max(8px, env(safe-area-inset-bottom));
+  border: 1px solid #d9e2f07d;
+  pointer-events: none;
+  z-index: 3;
+  border-radius: 8px;
+}
+
 .camera-controls {
   position: absolute;
   left: max(10px, env(safe-area-inset-left));
@@ -349,6 +388,35 @@ body.camera-mode .screen[data-screen='camera'] video {
   border: none;
   max-height: none;
   min-height: 100%;
+}
+
+.detail-compare {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #2c426a;
+  background: #111a2d;
+}
+
+.detail-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.detail-compare.single-image .detail-after {
+  clip-path: none !important;
+}
+
+.detail-slider {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  max-width: 420px;
 }
 
 @keyframes spin {
