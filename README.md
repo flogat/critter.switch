@@ -95,8 +95,8 @@ Umsetzung:
 
 1. In Google AI Studio einen eigenen API Key erzeugen.
 2. In der App unter **Einstellungen** den Key unter **Google API Key** eintragen.
-3. Modell auswählen (Standard: **Gemini 3 Pro Image Preview**).
-4. Optional die API-Basis-URL anpassen (Standard: `https://generativelanguage.googleapis.com/v1beta/models`).
+3. Modell auswählen (Standard: **Nano Banana 2 / Gemini 3.1 Flash Image Preview**).
+4. Optional die API-Basis-URL anpassen (Standard: `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent`).
 
 Die App baut daraus automatisch den nativen Gemini-Endpunkt im Format
 `/v1beta/models/{model}:generateContent`, ergänzt den `key`-Query-Parameter und sendet zusätzlich den Header `x-goog-api-key`.
