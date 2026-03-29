@@ -39,7 +39,6 @@
         <nav>
           <button class="nav-item active" data-nav="home">Scanner</button>
           <button class="nav-item" data-nav="archive">Archiv</button>
-          <button class="nav-item" data-nav="settings">Einstellungen</button>
         </nav>
 
         <button id="quickScanBtn" class="primary-btn">Check starten</button>
@@ -64,12 +63,11 @@
         </section>
 
         <section class="screen media-screen" data-screen="camera">
-          <h3>Kameraaufnahme</h3>
-          <p class="muted">Falls verfügbar: Kamera nutzen, sonst lokalen Platzhalter erzeugen.</p>
-          <p id="cameraModeLabel" class="muted">Frontkamera</p>
+          <button id="cameraSettingsBtn" class="camera-settings-btn" aria-label="Einstellungen öffnen">⚙</button>
+          <p id="cameraModeLabel" class="muted camera-mode-label">Frontkamera</p>
           <video id="cameraVideo" autoplay playsinline></video>
           <canvas id="captureCanvas" width="640" height="360" hidden></canvas>
-          <div class="cta-row">
+          <div class="cta-row camera-controls">
             <button id="switchCameraBtn" class="ghost-btn">Kamera wechseln</button>
             <button id="captureBtn" class="primary-btn">Foto aufnehmen</button>
             <button id="cameraCancelBtn" class="ghost-btn">Abbrechen</button>

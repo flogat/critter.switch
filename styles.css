@@ -228,10 +228,15 @@ video,
 }
 .archive-card img {
   width: 100%;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: var(--capture-ratio, 16 / 10);
   object-fit: cover;
   border-radius: 8px;
   border: 1px solid #36517f;
+}
+
+.archive-format {
+  font-size: 0.78rem;
+  color: var(--muted);
 }
 
 .filters,
@@ -267,6 +272,83 @@ input[type='range'] {
 
 .in-field { width: fit-content; }
 .warn { color: var(--danger); }
+
+body.camera-mode {
+  background: #000;
+}
+
+body.camera-mode .sidebar,
+body.camera-mode .topbar {
+  display: none;
+}
+
+body.camera-mode .app-shell {
+  display: block;
+}
+
+body.camera-mode .main-panel {
+  padding: 0;
+}
+
+body.camera-mode .screen[data-screen='camera'] {
+  display: block;
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  background: #000;
+  position: relative;
+}
+
+body.camera-mode .screen:not([data-screen='camera']) {
+  display: none !important;
+}
+
+.camera-settings-btn {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  z-index: 5;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid #d7deeb7d;
+  background: #111a2d63;
+  color: #f4f7fd;
+  backdrop-filter: blur(4px);
+  cursor: pointer;
+}
+
+.camera-mode-label {
+  position: absolute;
+  top: max(18px, env(safe-area-inset-top));
+  left: max(14px, env(safe-area-inset-left));
+  z-index: 4;
+  margin: 0;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #111a2d63;
+  border: 1px solid #d7deeb4f;
+}
+
+.camera-controls {
+  position: absolute;
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 4;
+}
+
+body.camera-mode .screen[data-screen='camera'] video {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  border: none;
+  max-height: none;
+  min-height: 100%;
+}
 
 @keyframes spin {
   to { transform: rotate(360deg); }
