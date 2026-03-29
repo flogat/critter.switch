@@ -4,12 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#05070e" />
-    <meta name="description" content="Critter Switch neon scanner prototype as installable tablet-friendly PWA." />
+    <meta name="description" content="Critter Switch Neon-Scanner-Prototyp als installierbare, tabletfreundliche PWA." />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Critter Switch" />
-    <title>Critter Switch – Kobold Detektor</title>
+    <title>Critter Switch – Kobold-Detektor</title>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="apple-touch-icon" href="icons/icon.svg" />
     <link rel="icon" type="image/svg+xml" sizes="any" href="icons/icon.svg" />
@@ -25,7 +25,7 @@
     <div class="app-shell">
       <aside class="sidebar">
         <h1>CRITTER SWITCH</h1>
-        <p class="subhead">KOBOLD DETEKTOR SUITE</p>
+        <p class="subhead">KOBOLD-DETEKTOR SUITE</p>
 
         <div class="status-chip"><span class="dot"></span><span id="networkStatus">ONLINE</span></div>
 
@@ -38,141 +38,182 @@
 
         <nav>
           <button class="nav-item active" data-nav="home">Scanner</button>
-          <button class="nav-item" data-nav="archive">Archive</button>
-          <button class="nav-item" data-nav="settings">Settings</button>
+          <button class="nav-item" data-nav="archive">Archiv</button>
+          <button class="nav-item" data-nav="settings">Einstellungen</button>
         </nav>
 
-        <button id="quickScanBtn" class="primary-btn">Start Check</button>
+        <button id="quickScanBtn" class="primary-btn">Check starten</button>
       </aside>
 
       <main class="main-panel">
         <header class="topbar">
-          <span id="stateText">STATUS: IDLE_READY</span>
-          <span id="analysisTimer">ANALYSIS: --</span>
+          <span id="stateText">STATUS: BEREIT</span>
+          <span id="analysisTimer">ANALYSE: --</span>
         </header>
 
         <section class="screen active" data-screen="home">
-          <p class="eyebrow">READY FOR OPERATION</p>
-          <h2>SCAN FOR <span>GLAMOURED KOBOLDS</span></h2>
+          <p class="eyebrow">EINSATZBEREIT</p>
+          <h2>SCAN NACH <span>GETARNTEN KOBOLDEN</span></h2>
           <p class="lede">
-            Family-safe scanner simulation with staged analysis, rarity system, local archive and transformation pipeline.
+            Familienfreundliche Scanner-Simulation mit Analysephasen, Seltenheitssystem, lokalem Archiv und Transform-Pipeline.
           </p>
           <div class="cta-row">
-            <button id="startScanBtn" class="scan-btn">START CHECK</button>
-            <button class="ghost-btn" data-open="archive">VIEW ARCHIVE</button>
+            <button id="startScanBtn" class="scan-btn">CHECK STARTEN</button>
+            <button class="ghost-btn" data-open="archive">ARCHIV ANSEHEN</button>
           </div>
         </section>
 
         <section class="screen" data-screen="camera">
-          <h3>Camera Capture</h3>
-          <p class="muted">Use webcam if available, otherwise generate a local placeholder capture.</p>
+          <h3>Kameraaufnahme</h3>
+          <p class="muted">Falls verfügbar: Webcam nutzen, sonst lokalen Platzhalter erzeugen.</p>
           <video id="cameraVideo" autoplay playsinline></video>
           <canvas id="captureCanvas" width="640" height="360" hidden></canvas>
           <div class="cta-row">
-            <button id="captureBtn" class="primary-btn">Capture Photo</button>
-            <button id="cameraCancelBtn" class="ghost-btn">Cancel</button>
+            <button id="captureBtn" class="primary-btn">Foto aufnehmen</button>
+            <button id="cameraCancelBtn" class="ghost-btn">Abbrechen</button>
           </div>
         </section>
 
         <section class="screen" data-screen="preview">
-          <h3>Photo Preview</h3>
-          <img id="previewImage" class="image-frame" alt="Captured subject" />
+          <h3>Fotovorschau</h3>
+          <img id="previewImage" class="image-frame" alt="Aufgenommenes Motiv" />
           <div class="cta-row">
-            <button id="usePhotoBtn" class="primary-btn">Use Photo</button>
-            <button id="retakeBtn" class="ghost-btn">Retake</button>
+            <button id="usePhotoBtn" class="primary-btn">Foto verwenden</button>
+            <button id="retakeBtn" class="ghost-btn">Neu aufnehmen</button>
           </div>
         </section>
 
         <section class="screen" data-screen="analysis">
-          <h3>Analysis Running</h3>
+          <h3>Analyse läuft</h3>
           <div class="ring"></div>
-          <p id="analysisPhase">Phase: Subject Acquisition</p>
-          <p id="analysisMessage" class="muted">Calibrating scanner arrays...</p>
+          <p id="analysisPhase">Phase: Subjekt-Erfassung</p>
+          <p id="analysisMessage" class="muted">Scanner-Arrays werden kalibriert ...</p>
           <div class="progress-track"><div id="analysisProgress"></div></div>
         </section>
 
         <section class="screen" data-screen="result">
-          <h3 id="resultTitle">Result</h3>
-          <img id="resultImage" class="image-frame" alt="Scan result" />
+          <h3 id="resultTitle">Ergebnis</h3>
+          <img id="resultImage" class="image-frame" alt="Scanergebnis" />
           <p id="resultMeta" class="muted"></p>
           <div class="cta-row">
-            <button id="resultPrimaryBtn" class="primary-btn">Scan Again</button>
-            <button id="saveResultBtn" class="ghost-btn">Save</button>
-            <button id="resultHomeBtn" class="ghost-btn">Back Home</button>
+            <button id="resultPrimaryBtn" class="primary-btn">Erneut scannen</button>
+            <button id="saveResultBtn" class="ghost-btn">Speichern</button>
+            <button id="resultHomeBtn" class="ghost-btn">Zur Startseite</button>
           </div>
         </section>
 
         <section class="screen" data-screen="transform">
-          <h3>Transformation Running</h3>
-          <p id="transformStatus">Contacting transform engine...</p>
+          <h3>Transformation läuft</h3>
+          <p id="transformStatus">Transform-Engine wird kontaktiert ...</p>
           <div class="progress-track"><div id="transformProgress"></div></div>
         </section>
 
+        <section class="screen" data-screen="transformError">
+          <h3>Transform-Fehler</h3>
+          <p id="transformErrorMessage" class="warn"></p>
+          <div class="cta-row">
+            <button id="retryTransformBtn" class="primary-btn">Erneut versuchen</button>
+            <button id="saveDetectionBtn" class="ghost-btn">Nur Fund speichern</button>
+            <button id="backToResultBtn" class="ghost-btn">Zurück zum Ergebnis</button>
+          </div>
+        </section>
+
         <section class="screen" data-screen="transformResult">
-          <h3>Transformation Result</h3>
+          <h3>Transform-Ergebnis</h3>
           <div class="compare-grid">
             <div>
-              <small>BEFORE</small>
-              <img id="beforeImage" class="image-frame" alt="Before transformation" />
+              <small>VORHER</small>
+              <img id="beforeImage" class="image-frame" alt="Vor der Transformation" />
             </div>
             <div>
-              <small>AFTER</small>
-              <img id="afterImage" class="image-frame" alt="After transformation" />
+              <small>NACHHER</small>
+              <img id="afterImage" class="image-frame" alt="Nach der Transformation" />
             </div>
           </div>
           <div class="cta-row">
-            <button id="saveTransformBtn" class="primary-btn">Save to Archive</button>
-            <button id="scanNextBtn" class="ghost-btn">Scan Next</button>
+            <button id="saveTransformBtn" class="primary-btn">Im Archiv speichern</button>
+            <button id="viewDetailBtn" class="ghost-btn">Detailansicht</button>
+            <button id="scanNextBtn" class="ghost-btn">Nächsten Scan</button>
           </div>
         </section>
 
         <section class="screen" data-screen="archive">
-          <h3>Archive</h3>
+          <h3>Archiv</h3>
           <div class="filters">
-            <button class="filter-btn active" data-filter="all">All</button>
-            <button class="filter-btn" data-filter="human">Humans</button>
-            <button class="filter-btn" data-filter="suspect">Suspects</button>
-            <button class="filter-btn" data-filter="kobold">Kobolds</button>
-            <button class="filter-btn" data-filter="rare">Rare+</button>
+            <button class="filter-btn active" data-filter="all">Alle</button>
+            <button class="filter-btn" data-filter="human">Menschen</button>
+            <button class="filter-btn" data-filter="suspect">Verdacht</button>
+            <button class="filter-btn" data-filter="kobold">Kobolde</button>
+            <button class="filter-btn" data-filter="rare">Selten+</button>
           </div>
           <div id="archiveGrid" class="archive-grid"></div>
         </section>
 
+        <section class="screen" data-screen="detail">
+          <h3>Fund-Detail</h3>
+          <img id="detailImage" class="image-frame" alt="Detailansicht" />
+          <div id="detailMeta" class="settings-grid"></div>
+          <div class="cta-row">
+            <button id="deleteEntryBtn" class="ghost-btn">Eintrag löschen</button>
+            <button id="backToArchiveBtn" class="primary-btn">Zurück ins Archiv</button>
+          </div>
+        </section>
+
         <section class="screen" data-screen="settings">
-          <h3>Settings</h3>
+          <h3>Einstellungen</h3>
           <div class="settings-grid">
             <label>
-              Hit Rate Profile
+              Trefferprofil
               <select id="hitRateSelect">
-                <option value="low">Low</option>
-                <option value="normal" selected>Normal</option>
-                <option value="chaotic">Chaotic</option>
+                <option value="low">Niedrig</option>
+                <option value="normal" selected>Standard</option>
+                <option value="chaotic">Chaotisch</option>
               </select>
             </label>
             <label>
-              Analysis Pace
+              Analysetempo
               <select id="paceSelect">
-                <option value="short">Short</option>
+                <option value="short">Kurz</option>
                 <option value="standard" selected>Standard</option>
-                <option value="dramatic">Dramatic</option>
+                <option value="dramatic">Dramatisch</option>
               </select>
             </label>
             <label>
-              Style Preset
+              Stil-Voreinstellung
               <select id="styleSelect">
-                <option value="funny">Funny</option>
-                <option value="creepy-light">Creepy-light</option>
-                <option value="mischievous">Mischievous</option>
+                <option value="funny">Lustig</option>
+                <option value="creepy-light">Gruselig-leicht</option>
+                <option value="mischievous">Schelmisch</option>
                 <option value="wild">Wild</option>
-                <option value="noble">Noble</option>
+                <option value="noble">Edel</option>
               </select>
+            </label>
+            <label>
+              Modell
+              <select id="modelSelect">
+                <option value="">Bitte wählen</option>
+                <option value="nano-banana-2" selected>Nano Banana 2</option>
+                <option value="sprite-forge-lite">Sprite Forge Lite</option>
+              </select>
+            </label>
+            <label>
+              Spaß ↔ Gemein
+              <input id="funMeanRange" type="range" min="0" max="100" value="70" />
+            </label>
+            <label>
+              Süß ↔ Hässlich
+              <input id="cuteUglyRange" type="range" min="0" max="100" value="60" />
+            </label>
+            <label>
+              Sauber ↔ Schmuddelig
+              <input id="cleanGrimyRange" type="range" min="0" max="100" value="40" />
             </label>
             <label>
               OAuth / API
-              <button id="authToggleBtn" class="ghost-btn in-field">Connect</button>
+              <button id="authToggleBtn" class="ghost-btn in-field">Verbinden</button>
             </label>
           </div>
-          <p class="muted">Images stay local; only selected kobold captures are used for transformation.</p>
+          <p class="muted">Bilder bleiben lokal; nur ausgewählte Kobold-Aufnahmen werden für die Transformation genutzt.</p>
         </section>
       </main>
     </div>

@@ -1,118 +1,111 @@
 # Critter Switch (GitHub Pages PWA)
 
-Critter Switch is now set up as an installable **Progressive Web App (PWA)** optimized for **tablet landscape** and designed to be used directly from its GitHub Pages URL.
+Critter Switch ist als installierbare **Progressive Web App (PWA)** eingerichtet, für **Tablet-Landscape** optimiert und direkt über die GitHub-Pages-URL nutzbar.
 
-## What is included
+## Enthaltene Funktionen
 
-- Installable web app manifest (`manifest.webmanifest`)
-- Service worker app-shell caching (`service-worker.js`) for offline use after first load
-- PWA/mobile meta tags in `index.html`
-- Landscape-first configuration (`orientation: "landscape"` in manifest)
-- App icon: `icons/icon.svg`
-- GitHub Actions workflow for automatic GitHub Pages deployment
+- Installierbares Web-App-Manifest (`manifest.webmanifest`)
+- Service-Worker App-Shell-Caching (`service-worker.js`) für Offline-Nutzung nach dem ersten Laden
+- PWA-/Mobile-Meta-Tags in `index.html`
+- Landscape-First-Konfiguration (`orientation: "landscape"` im Manifest)
+- App-Icon: `icons/icon.svg`
+- GitHub-Actions-Workflow für automatische GitHub-Pages-Deployments
+- Vollständiger MVP-Flow inkl. Detailansicht, Transform-Fehlerpfad, Retry und Save-without-transform
+- Deutsche UI-Texte und deutsche Produktdokumentation
 
-## Run locally (optional)
-
-Local development is optional and not required for normal use:
+## Lokal starten (optional)
 
 ```bash
 python3 -m http.server 8080
 ```
 
-Then open `http://localhost:8080`.
+Dann `http://localhost:8080` öffnen.
 
-> Note: PWA installability requires **HTTPS** or `localhost`.
+> Hinweis: PWA-Installierbarkeit erfordert **HTTPS** oder `localhost`.
 
-## Publish on GitHub Pages (recommended primary workflow)
+## Auf GitHub Pages veröffentlichen (empfohlener Workflow)
 
-### 1) Push this repository to GitHub
+### 1) Repository nach GitHub pushen
 
-Make sure this workflow file exists:
+Sicherstellen, dass diese Workflow-Datei vorhanden ist:
 
 - `.github/workflows/deploy.yml`
 
-### 2) Enable GitHub Pages for Actions deployment
+### 2) GitHub Pages für Actions-Deployment aktivieren
 
-In your GitHub repository:
+In deinem GitHub-Repository:
 
-1. Go to **Settings → Pages**
-2. Under **Build and deployment**, set:
+1. **Settings → Pages** öffnen
+2. Unter **Build and deployment** setzen:
    - **Source** = `GitHub Actions`
 
-No `/docs` branch publishing setup is needed because deployment is handled by the workflow.
+Keine `/docs`-Branch-Publishing-Konfiguration nötig, weil das Deployment per Workflow läuft.
 
-### 3) Deploy
+### 3) Deployen
 
-- Push to `main` (or trigger **Actions → Deploy Critter Switch to GitHub Pages → Run workflow**).
-- Wait until the workflow finishes successfully.
+- Auf `main` pushen (oder **Actions → Deploy Critter Switch to GitHub Pages → Run workflow** ausführen).
+- Warten, bis der Workflow erfolgreich beendet ist.
 
-### 4) Open your hosted app URL
+### 4) Gehostete App-URL öffnen
 
-GitHub Pages URL pattern:
+GitHub-Pages-URL-Schema:
 
-- User/Org site repo (`<username>.github.io`):
+- User/Org-Site-Repo (`<username>.github.io`):
   - `https://<username>.github.io/`
-- Project repo (typical):
+- Projekt-Repo (typisch):
   - `https://<username>.github.io/<repository-name>/`
 
-For this project repository, expect the second pattern.
+Für dieses Projekt wird in der Regel das zweite Muster genutzt.
 
-## Repository subpath hosting support
+## Hosting im Repository-Unterpfad
 
-Yes. This app is configured to work when hosted either:
+Die App funktioniert sowohl:
 
-- at domain root (`/`), or
-- under a repository subpath (`/<repo>/`)
+- auf Domain-Root (`/`), als auch
+- in einem Repository-Unterpfad (`/<repo>/`)
 
-How this is handled:
+Umsetzung:
 
-- relative links in HTML (`styles.css`, `app.js`, icon paths)
-- manifest with relative `start_url` and `scope` (`./`)
-- service worker registration built from the current path
-- service worker cache list uses relative app-shell entries
+- relative Links in HTML (`styles.css`, `app.js`, Icon-Pfade)
+- Manifest mit relativen `start_url` und `scope` (`./`)
+- Service-Worker-Registrierung aus aktuellem Pfad
+- relative App-Shell-Einträge in der Cache-Liste
 
-## Install on iPad (Safari)
+## Installation auf iPad (Safari)
 
-1. Open your GitHub Pages HTTPS URL in **Safari**.
-2. Tap **Share**.
-3. Tap **Add to Home Screen**.
-4. Confirm name and tap **Add**.
-5. Launch from the home screen icon.
+1. GitHub-Pages-HTTPS-URL in **Safari** öffnen.
+2. Auf **Teilen** tippen.
+3. **Zum Home-Bildschirm** wählen.
+4. Namen bestätigen und **Hinzufügen** tippen.
+5. Über das Homescreen-Icon starten.
 
-## Install on Android (Chrome)
+## Installation auf Android (Chrome)
 
-1. Open your GitHub Pages HTTPS URL in **Chrome**.
-2. Wait for install prompt, or tap menu (`⋮`) → **Install app** / **Add to Home screen**.
-3. Confirm install.
+1. GitHub-Pages-HTTPS-URL in **Chrome** öffnen.
+2. Auf Installationshinweis warten oder Menü (`⋮`) → **App installieren** / **Zum Startbildschirm hinzufügen**.
+3. Installation bestätigen.
 
-## Offline behavior
+## Offline-Verhalten
 
-- First visit downloads and caches app shell files.
-- After first successful load, app can open offline.
-- Dynamic online-only parts (e.g., network-dependent transform simulation gate) still respect online/offline status in the UI logic.
+- Erster Besuch lädt und cached die App-Shell-Dateien.
+- Nach erfolgreichem Erstladen ist die App offline startbar.
+- Online-abhängige Teile (z. B. Transformationslauf) werden im UI sauber über Guards behandelt.
 
-## iPad/iOS PWA limitations (important)
+## Projektstruktur
 
-- Web Push support and background behavior differ from desktop/Android.
-- Storage can be cleared by iOS under space pressure.
-- Some browser APIs are more restricted in home-screen mode.
-- Camera/media permissions may be stricter and can require user interaction context.
+- `index.html` – App-Layout, PWA-Meta, Manifest-Verknüpfung
+- `styles.css` – Neon-Scanner-Visuals
+- `app.js` – Scanner-Flow, lokale Sammlung, Detailansicht, Transform-Guards/Fehlerpfad
+- `manifest.webmanifest` – Install-Metadaten, Icons, Standalone, Landscape-Präferenz
+- `service-worker.js` – App-Shell-Cache-Strategie
+- `pwa-register.js` – Service-Worker-Registrierung mit Subpath-Support
+- `.github/workflows/deploy.yml` – CI-Deployment auf GitHub Pages
+- `icons/icon.svg` – PWA-Icons
 
-## Project structure
+## Produktdokumentation
 
-- `index.html` – App layout, PWA meta tags, manifest wiring
-- `styles.css` – Neon scanner visuals
-- `app.js` – Existing scanner interactions and local archive logic
-- `manifest.webmanifest` – Install metadata, icons, standalone display, landscape preference
-- `service-worker.js` – App-shell cache strategy for offline use
-- `pwa-register.js` – Service worker registration compatible with subpaths
-- `.github/workflows/deploy.yml` – CI deploy to GitHub Pages
-- `icons/icon.svg` – PWA icons
-
-## Product design artifacts
-
-- `docs/wireflow.md` – screen flow and transitions
-- `docs/technical-implementation-plan.md` – architecture/state/data/PWA plan
-- `docs/prompt-design.md` – kobold transformation prompt templates
-- `docs/mvp-task-plan.md` – phased implementation roadmap
-- `docs/product-ux-design.md` – product and UX design document
+- `docs/wireflow.md` – Screenflow und Übergänge
+- `docs/technical-implementation-plan.md` – Architektur/State/Daten/PWA-Plan
+- `docs/prompt-design.md` – Prompt-Bausteine für Kobold-Transformation
+- `docs/mvp-task-plan.md` – MVP-Roadmap mit Umsetzungsstatus
+- `docs/product-ux-design.md` – Produkt- und UX-Design-Dokument
