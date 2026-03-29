@@ -12,6 +12,23 @@ const archiveStorageLimits = {
   recentWithImages: 24,
 };
 
+const koboldClasses = [
+  'Moorfunke',
+  'Laternenknabberer',
+  'Dachbalken-Imp',
+  'Kupferschleicher',
+  'Socken-Orakel',
+  'WLAN-Wichtel',
+  'Keks-Kommissar',
+  'Keller-Konfetti-Kobold',
+  'Zahnputz-Zampano',
+  'Pfandflaschen-Paladin',
+  'Staubwedel-Schamane',
+  'Pizzarand-Pirat',
+  'Treppenwitz-Trollinger',
+  'Koffein-Kobold',
+];
+
 const defaults = {
   settings: {
     hitRate: 'normal',
@@ -306,7 +323,10 @@ async function findCameraDeviceIdForFacingMode(facingMode) {
 
     const facingHint = facingMode === 'environment' ? /(back|rear|environment|rück)/i : /(front|user|self|face|vorn)/i;
     const hinted = videos.find((device) => facingHint.test(device.label || ''));
-    return (hinted || videos[0]).deviceId || '';
+    if (hinted?.deviceId) return hinted.deviceId;
+    if (videos.length === 1) return videos[0].deviceId || '';
+    const fallback = facingMode === 'environment' ? videos[videos.length - 1] : videos[0];
+    return fallback?.deviceId || '';
   } catch {
     return '';
   }
@@ -384,7 +404,7 @@ function produceResult() {
     type,
     anomalyScore,
     rarity,
-    koboldClass: type === 'kobold' ? randomFrom(['Moorfunke', 'Laternenknabberer', 'Dachbalken-Imp', 'Kupferschleicher']) : null,
+    koboldClass: type === 'kobold' ? randomFrom(koboldClasses) : null,
     image: state.captureDataUrl,
     captureMeta: buildCaptureMeta(),
     transformedImage: '',
@@ -436,9 +456,13 @@ async function startTransform(attempt = 0) {
   $('#transformProgress').style.width = '0%';
   let progress = 5;
   let settled = false;
+  const expectedDurationMs = 35_000;
+  const progressStarted = Date.now();
 
   const job = setInterval(() => {
-    progress = Math.min(92, progress + 4 + Math.random() * 8);
+    const elapsed = Date.now() - progressStarted;
+    const linearProgress = 5 + (elapsed / expectedDurationMs) * 90;
+    progress = Math.min(95, Math.max(progress, linearProgress));
     $('#transformProgress').style.width = `${progress}%`;
     $('#transformStatus').textContent =
       progress < 45
@@ -943,19 +967,39 @@ function persist(key, value) {
     if (key !== storageKeys.archive) throw error;
   }
 
-  const compacted = compactArchiveForStorage(value);
-  localStorage.setItem(key, JSON.stringify(compacted));
-  state.archive = compacted;
+  let compacted = compactArchiveForStorage(value);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      localStorage.setItem(key, JSON.stringify(compacted));
+      state.archive = compacted;
+      return;
+    } catch {
+      if (attempt === 0) {
+        compacted = compactArchiveForStorage(compacted, { maxEntries: 80, recentWithImages: 12 });
+      } else if (attempt === 1) {
+        compacted = compactArchiveForStorage(compacted, { maxEntries: 40, recentWithImages: 4 });
+      } else {
+        compacted = compactArchiveForStorage(compacted, { maxEntries: 20, recentWithImages: 0 });
+      }
+    }
+  }
+
+  console.warn('Archiv konnte wegen Storage-Limit nicht vollständig gespeichert werden.');
 }
 
-function compactArchiveForStorage(entries) {
+function compactArchiveForStorage(entries, overrideLimits = {}) {
   if (!Array.isArray(entries)) return [];
+  const limits = {
+    maxEntries: overrideLimits.maxEntries ?? archiveStorageLimits.maxEntries,
+    recentWithImages: overrideLimits.recentWithImages ?? archiveStorageLimits.recentWithImages,
+  };
 
   const sorted = [...entries].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  const trimmed = sorted.slice(0, archiveStorageLimits.maxEntries).map((entry, index) => {
+  const trimmed = sorted.slice(0, limits.maxEntries).map((entry, index) => {
     const hasTransformedImage = typeof entry.transformedImage === 'string' && entry.transformedImage.startsWith('data:image/');
     const hasCaptureImage = typeof entry.image === 'string' && entry.image.startsWith('data:image/');
-    const keepImage = index < archiveStorageLimits.recentWithImages;
+    const keepImage = index < limits.recentWithImages;
 
     return {
       ...entry,
