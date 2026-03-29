@@ -91,6 +91,18 @@ Umsetzung:
 - Nach erfolgreichem Erstladen ist die App offline startbar.
 - Online-abhängige Teile (z. B. Transformationslauf) werden im UI sauber über Guards behandelt.
 
+## KI-Transformation konfigurieren (native Gemini API, ohne eigenes Backend)
+
+1. In Google AI Studio einen eigenen API Key erzeugen.
+2. In der App unter **Einstellungen** den Key unter **Google API Key** eintragen.
+3. Modell auswählen (Standard: **Gemini 3 Pro Image Preview**).
+4. Optional die API-Basis-URL anpassen (Standard: `https://generativelanguage.googleapis.com/v1beta/models`).
+
+Die App baut daraus automatisch den nativen Gemini-Endpunkt im Format
+`/v1beta/models/{model}:generateContent`, ergänzt den `key`-Query-Parameter und sendet zusätzlich den Header `x-goog-api-key`.
+
+Der Request nutzt das native Gemini-Format (`contents[].parts[]` + `inlineData`) und fordert Bildausgabe über `generationConfig.responseModalities = ["IMAGE"]` an.
+
 ## Projektstruktur
 
 - `index.html` – App-Layout, PWA-Meta, Manifest-Verknüpfung

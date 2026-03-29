@@ -196,24 +196,24 @@
               Modell
               <select id="modelSelect">
                 <option value="">Bitte wählen</option>
-                <option value="nano-banana-2" selected>Nano Banana 2</option>
-                <option value="sprite-forge-lite">Sprite Forge Lite</option>
+                <option value="gemini-3-pro-image-preview" selected>Gemini 3 Pro Image Preview (Image Pro)</option>
+                <option value="nano-banana-pro-preview">Nano Banana Pro Preview</option>
+                <option value="nano-banana-2-preview">Nano Banana 2 Preview</option>
               </select>
             </label>
             <label>
-              API-Basis-URL (Platzhalter)
+              Google API-Basis-URL
               <input id="apiBaseUrlInput" type="text" />
             </label>
             <label>
-              OAuth-Anbieter
-              <select id="oauthProviderSelect">
-                <option value="google">Google</option>
-                <option value="github">GitHub</option>
+              Authentifizierung
+              <select id="authModeSelect">
+                <option value="apiKey">Google API Key</option>
               </select>
             </label>
             <label>
-              Google OAuth Client-ID
-              <input id="oauthClientIdInput" type="text" placeholder="1234567890-abc123.apps.googleusercontent.com" />
+              Google API Key
+              <input id="apiKeyInput" type="password" placeholder="AIza..." autocomplete="off" />
             </label>
             <label>
               Auto-Speichern
@@ -242,19 +242,13 @@
               Sauber ↔ Schmuddelig
               <input id="cleanGrimyRange" type="range" min="0" max="100" value="40" />
             </label>
-            <label>
-              OAuth / API
-              <button id="authToggleBtn" class="ghost-btn in-field">Google verbinden</button>
-            </label>
           </div>
           <p class="muted">
-            Für echte KI-Transformation: Google OAuth verbinden und eine Google-kompatible Transform-API in der Basis-URL hinterlegen.
+            Für native Gemini-Nutzung ohne eigenes Backend: API Key aus Google AI Studio eintragen. Standard-URL ist die Google Generative Language API (`/v1beta/models`) und wird automatisch mit dem gewählten Modell auf `:generateContent` ergänzt.
           </p>
         </section>
       </main>
     </div>
-
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="app.js"></script>
     <script src="pwa-register.js"></script>
   </body>

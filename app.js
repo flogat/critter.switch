@@ -5,7 +5,6 @@ const storageKeys = {
   archive: 'critter.archive.v3',
   settings: 'critter.settings.v3',
   progression: 'critter.progress.v3',
-  auth: 'critter.auth.v3',
 };
 
 const defaults = {
@@ -13,13 +12,13 @@ const defaults = {
     hitRate: 'normal',
     pace: 'standard',
     style: 'funny',
-    model: 'nano-banana-2',
+    model: 'gemini-3-pro-image-preview',
     funMean: 70,
     cuteUgly: 60,
     cleanGrimy: 40,
-    apiBaseUrl: 'https://api.example.invalid/transform',
-    oauthProvider: 'google',
-    oauthClientId: '',
+    apiBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/models',
+    authMode: 'apiKey',
+    apiKey: '',
     autoSaveBehavior: 'ask',
     sortOrder: 'newest',
   },
@@ -80,15 +79,14 @@ const state = {
   archive: load(storageKeys.archive, []),
   settings: load(storageKeys.settings, defaults.settings),
   progression: load(storageKeys.progression, defaults.progression),
-  authenticated: load(storageKeys.auth, false),
   resultHistory: [],
   rarityHistory: [],
   activeFilter: 'all',
   selectedArchiveId: null,
   cameraFacingMode: 'user',
   comparingAfter: true,
-  oauthAccessToken: '',
-  oauthExpiresAt: 0,
+  captureWidth: 0,
+  captureHeight: 0,
 };
 
 init();
@@ -147,8 +145,8 @@ function bindSettings() {
   $('#cuteUglyRange').value = String(state.settings.cuteUgly);
   $('#cleanGrimyRange').value = String(state.settings.cleanGrimy);
   $('#apiBaseUrlInput').value = state.settings.apiBaseUrl;
-  $('#oauthProviderSelect').value = state.settings.oauthProvider;
-  $('#oauthClientIdInput').value = state.settings.oauthClientId;
+  $('#authModeSelect').value = state.settings.authMode;
+  $('#apiKeyInput').value = state.settings.apiKey;
   $('#autoSaveSelect').value = state.settings.autoSaveBehavior;
   $('#sortOrderSelect').value = state.settings.sortOrder;
 
@@ -160,22 +158,13 @@ function bindSettings() {
   $('#cuteUglyRange').addEventListener('input', (e) => updateSetting('cuteUgly', Number(e.target.value)));
   $('#cleanGrimyRange').addEventListener('input', (e) => updateSetting('cleanGrimy', Number(e.target.value)));
   $('#apiBaseUrlInput').addEventListener('change', (e) => updateSetting('apiBaseUrl', e.target.value.trim()));
-  $('#oauthProviderSelect').addEventListener('change', (e) => updateSetting('oauthProvider', e.target.value));
-  $('#oauthClientIdInput').addEventListener('change', (e) => updateSetting('oauthClientId', e.target.value.trim()));
+  $('#authModeSelect').addEventListener('change', (e) => updateSetting('authMode', e.target.value));
+  $('#apiKeyInput').addEventListener('change', (e) => updateSetting('apiKey', e.target.value.trim()));
   $('#autoSaveSelect').addEventListener('change', (e) => updateSetting('autoSaveBehavior', e.target.value));
   $('#sortOrderSelect').addEventListener('change', (e) => {
     updateSetting('sortOrder', e.target.value);
     renderArchive();
   });
-
-  $('#authToggleBtn').addEventListener('click', async () => {
-    if (state.authenticated) {
-      disconnectGoogleOAuth();
-      return;
-    }
-    await connectGoogleOAuth();
-  });
-  renderAuthButton();
 }
 
 function bindFilters() {
@@ -253,6 +242,8 @@ function capturePhoto() {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    state.captureWidth = canvas.width;
+    state.captureHeight = canvas.height;
   } else {
     canvas.width = 960;
     canvas.height = 540;
@@ -264,6 +255,8 @@ function capturePhoto() {
     ctx.fillStyle = '#b9ff6f';
     ctx.font = 'bold 44px Orbitron';
     ctx.fillText('SIMULIERTE AUFNAHME', 220, 270);
+    state.captureWidth = canvas.width;
+    state.captureHeight = canvas.height;
   }
 
   state.captureDataUrl = canvas.toDataURL('image/jpeg', 0.92);
@@ -365,7 +358,7 @@ async function startTransform(attempt = 0) {
       progress < 45
         ? 'Stil-Prompt wird komponiert ...'
         : progress < 80
-          ? 'Nano Banana 2 rendert Transformation ...'
+          ? 'Gemini Image Pro rendert Transformation ...'
           : 'Bildausgabe wird finalisiert ...';
   }, 300);
 
@@ -388,14 +381,10 @@ async function startTransform(attempt = 0) {
 
 function getTransformGuardError() {
   if (!navigator.onLine) return 'Transformation nicht möglich: Offline-Modus ist aktiv.';
-  if (!state.authenticated) return `Transformation erfordert eine OAuth-Verbindung (${state.settings.oauthProvider}) in den Einstellungen.`;
   if (!state.settings.model) return 'Bitte zuerst ein Modell in den Einstellungen auswählen.';
   if (!state.settings.apiBaseUrl) return 'Bitte zuerst eine API-Basis-URL in den Einstellungen hinterlegen.';
-  if (state.settings.oauthProvider === 'google' && !state.settings.oauthClientId) {
-    return 'Bitte zuerst eine Google OAuth Client-ID in den Einstellungen hinterlegen.';
-  }
-  if (state.settings.oauthProvider === 'google' && !hasValidOAuthToken()) {
-    return 'Google OAuth ist abgelaufen. Bitte neu verbinden.';
+  if (state.settings.authMode === 'apiKey' && !state.settings.apiKey) {
+    return 'Bitte zuerst einen Google API Key in den Einstellungen hinterlegen.';
   }
   return '';
 }
@@ -654,69 +643,12 @@ function buildPrompt() {
   return `Transformiere das fotografierte menschliche Subjekt in einen ${state.settings.style}-Kobold, halte Pose und Bildausschnitt stabil, bewahre erkennbare Identitätsanker, familienfreundlich ohne Horror. Stimmung: Spaß ${fun.toFixed(2)}, Süße ${cute.toFixed(2)}, Sauberkeit ${clean.toFixed(2)}.`;
 }
 
-async function connectGoogleOAuth() {
-  if (state.settings.oauthProvider !== 'google') {
-    state.authenticated = true;
-    persist(storageKeys.auth, state.authenticated);
-    renderAuthButton();
-    return;
-  }
-  if (!state.settings.oauthClientId) {
-    showTransformError('Bitte zuerst eine Google OAuth Client-ID in den Einstellungen hinterlegen.', false);
-    return;
-  }
-  if (!window.google?.accounts?.oauth2) {
-    showTransformError('Google OAuth Skript konnte nicht geladen werden. Bitte Seite neu laden.', false);
-    return;
-  }
-
-  const tokenClient = window.google.accounts.oauth2.initTokenClient({
-    client_id: state.settings.oauthClientId,
-    scope: 'https://www.googleapis.com/auth/generative-language',
-    callback: (tokenResponse) => {
-      if (!tokenResponse?.access_token) {
-        showTransformError('Google OAuth konnte kein Access-Token liefern.', false);
-        return;
-      }
-      state.oauthAccessToken = tokenResponse.access_token;
-      state.oauthExpiresAt = Date.now() + Math.max(30, Number(tokenResponse.expires_in || 0)) * 1000;
-      state.authenticated = true;
-      persist(storageKeys.auth, true);
-      renderAuthButton();
-      $('#stateText').textContent = 'STATUS: GOOGLE_OAUTH_VERBUNDEN';
-    },
-  });
-
-  tokenClient.requestAccessToken({ prompt: 'consent' });
-}
-
-function disconnectGoogleOAuth() {
-  if (window.google?.accounts?.oauth2 && state.oauthAccessToken) {
-    window.google.accounts.oauth2.revoke(state.oauthAccessToken, () => {});
-  }
-  state.oauthAccessToken = '';
-  state.oauthExpiresAt = 0;
-  state.authenticated = false;
-  persist(storageKeys.auth, false);
-  renderAuthButton();
-}
-
-function hasValidOAuthToken() {
-  return Boolean(state.oauthAccessToken) && Date.now() < state.oauthExpiresAt - 15_000;
-}
-
-function renderAuthButton() {
-  const btn = $('#authToggleBtn');
-  if (!btn) return;
-  btn.textContent = state.authenticated ? 'Google trennen' : 'Google verbinden';
-}
-
 async function requestTransformFromApi() {
-  const endpoint = state.settings.apiBaseUrl;
+  const endpoint = withGoogleApiKey(resolveGeminiEndpoint(state.settings.apiBaseUrl, state.settings.model), state.settings.apiKey);
   const payload = buildGoogleTransformPayload();
   const headers = { 'Content-Type': 'application/json' };
-  if (state.settings.oauthProvider === 'google' && state.oauthAccessToken) {
-    headers.Authorization = `Bearer ${state.oauthAccessToken}`;
+  if (state.settings.authMode === 'apiKey' && state.settings.apiKey) {
+    headers['x-goog-api-key'] = state.settings.apiKey;
   }
 
   const response = await fetch(endpoint, {
@@ -736,21 +668,82 @@ async function requestTransformFromApi() {
   return dataUrl;
 }
 
+
+function resolveGeminiEndpoint(baseUrl, model) {
+  if (!baseUrl) return '';
+
+  const normalizedBase = baseUrl.trim().replace(/\/+$/, '');
+  const encodedModel = encodeURIComponent(model || '');
+  const hasMethodSuffix = /:generateContent(?:\?|$)/.test(normalizedBase);
+
+  if (hasMethodSuffix) return normalizedBase;
+  if (/\/models\/[^/]+$/.test(normalizedBase) && model) {
+    return `${normalizedBase}:generateContent`;
+  }
+  if (normalizedBase.endsWith('/models') && model) {
+    return `${normalizedBase}/${encodedModel}:generateContent`;
+  }
+
+  return model
+    ? `${normalizedBase}/models/${encodedModel}:generateContent`
+    : normalizedBase;
+}
+
+function withGoogleApiKey(baseUrl, apiKey) {
+  if (!baseUrl || !apiKey) return baseUrl;
+  try {
+    const url = new URL(baseUrl);
+    if (url.searchParams.has('key')) return url.toString();
+    const isGoogleEndpoint = url.hostname.includes('googleapis.com') || url.hostname.includes('google.com');
+    if (isGoogleEndpoint) {
+      url.searchParams.set('key', apiKey);
+      return url.toString();
+    }
+    return baseUrl;
+  } catch {
+    return baseUrl;
+  }
+}
+
 function buildGoogleTransformPayload() {
-  const base64Image = (state.captureDataUrl || '').split(',')[1] || '';
+  const [mimeHeader, base64Image = ''] = (state.captureDataUrl || '').split(',');
+  const mimeMatch = mimeHeader?.match(/^data:(.+);base64$/);
+  const mimeType = mimeMatch?.[1] || 'image/jpeg';
+
   return {
-    model: state.settings.model,
-    prompt: buildPrompt(),
-    image: {
-      mimeType: 'image/jpeg',
-      data: base64Image,
-    },
-    knobs: {
-      funMean: state.settings.funMean,
-      cuteUgly: state.settings.cuteUgly,
-      cleanGrimy: state.settings.cleanGrimy,
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          { text: buildPrompt() },
+          {
+            inlineData: {
+              mimeType,
+              data: base64Image,
+            },
+          },
+        ],
+      },
+    ],
+    generationConfig: {
+      responseModalities: ['IMAGE'],
+      imageConfig: {
+        aspectRatio: detectAspectRatio(),
+        imageSize: '2K',
+      },
     },
   };
+}
+
+function detectAspectRatio() {
+  const width = state.captureWidth || 0;
+  const height = state.captureHeight || 0;
+  if (width > 0 && height > 0) {
+    const ratio = width / height;
+    if (ratio > 1.6) return '16:9';
+    if (ratio < 0.8) return '3:4';
+  }
+  return '4:3';
 }
 
 function extractImageDataUrl(data) {
