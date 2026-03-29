@@ -7,6 +7,11 @@ const storageKeys = {
   progression: 'critter.progress.v3',
 };
 
+const archiveStorageLimits = {
+  maxEntries: 120,
+  recentWithImages: 24,
+};
+
 const defaults = {
   settings: {
     hitRate: 'normal',
@@ -513,7 +518,7 @@ function openArchiveDetail(id) {
 
 function renderDetail(entry) {
   const captureMeta = entry.captureMeta || {};
-  $('#detailImage').src = entry.transformedImage || entry.image;
+  $('#detailImage').src = getEntryImage(entry);
   $('#detailMeta').innerHTML = `
     <label><strong>Typ</strong><span>${typeLabels[entry.type]}</span></label>
     <label><strong>Seltenheit</strong><span>${entry.rarity ? rarityLabels[entry.rarity] : '–'}</span></label>
@@ -573,7 +578,7 @@ function renderArchive() {
 
   grid.innerHTML = list
     .map((entry) => {
-      const image = entry.transformedImage || entry.image;
+      const image = getEntryImage(entry);
       const captureMeta = entry.captureMeta || {};
       const ratio = Number(captureMeta.width) > 0 && Number(captureMeta.height) > 0 ? `${captureMeta.width} / ${captureMeta.height}` : '16 / 10';
       return `
@@ -595,7 +600,7 @@ function renderArchive() {
 async function shareSelectedEntry() {
   const entry = state.archive.find((item) => item.id === state.selectedArchiveId);
   if (!entry) return;
-  const imageDataUrl = entry.transformedImage || entry.image;
+  const imageDataUrl = getEntryImage(entry);
 
   if (navigator.share) {
     try {
@@ -931,7 +936,51 @@ function load(key, fallback) {
 }
 
 function persist(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return;
+  } catch (error) {
+    if (key !== storageKeys.archive) throw error;
+  }
+
+  const compacted = compactArchiveForStorage(value);
+  localStorage.setItem(key, JSON.stringify(compacted));
+  state.archive = compacted;
+}
+
+function compactArchiveForStorage(entries) {
+  if (!Array.isArray(entries)) return [];
+
+  const sorted = [...entries].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const trimmed = sorted.slice(0, archiveStorageLimits.maxEntries).map((entry, index) => {
+    const hasTransformedImage = typeof entry.transformedImage === 'string' && entry.transformedImage.startsWith('data:image/');
+    const hasCaptureImage = typeof entry.image === 'string' && entry.image.startsWith('data:image/');
+    const keepImage = index < archiveStorageLimits.recentWithImages;
+
+    return {
+      ...entry,
+      image: keepImage ? entry.image : '',
+      transformedImage: keepImage ? entry.transformedImage : '',
+      hasImageFallback: keepImage ? false : hasTransformedImage || hasCaptureImage,
+    };
+  });
+
+  return trimmed;
+}
+
+function getEntryImage(entry) {
+  if (!entry) return buildArchivePlaceholder();
+  return entry.transformedImage || entry.image || buildArchivePlaceholder(entry.hasImageFallback);
+}
+
+function buildArchivePlaceholder(hadImage = false) {
+  const label = hadImage ? 'Bild aus Speichergründen entfernt' : 'Kein Bild gespeichert';
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 750'>
+  <defs><linearGradient id='bg' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='%230f1e38'/><stop offset='100%' stop-color='%23131a2a'/></linearGradient></defs>
+  <rect fill='url(%23bg)' width='1200' height='750'/>
+  <text x='50%' y='50%' fill='%23dce9ff' font-size='44' text-anchor='middle' dominant-baseline='middle' font-family='Arial, sans-serif'>${label}</text>
+</svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
 function randomFrom(items) {
