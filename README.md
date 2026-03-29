@@ -26,3 +26,8 @@ Derived planning artifacts for the Critter Switch MVP are available in `docs/`:
 - `docs/technical-implementation-plan.md` – architecture/state/data/pwa plan
 - `docs/prompt-design.md` – kobold transformation prompt templates
 - `docs/mvp-task-plan.md` – phased implementation roadmap
+
+
+## Produktdokumentation
+
+- [Produkt- und UX-Design-Dokument](docs/product-ux-design.md)
