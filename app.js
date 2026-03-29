@@ -442,8 +442,8 @@ function updateResultScreen() {
   if (result.type === 'human') {
     title.textContent = 'Mensch bestätigt';
     meta.textContent = `Alles klar. Anomaliewert ${result.anomalyScore}%.`;
-    primary.textContent = 'Erneut scannen';
-    primary.onclick = openCameraFlow;
+    primary.textContent = 'Trotzdem transformieren';
+    primary.onclick = () => startTransform(0);
   } else if (result.type === 'suspect') {
     title.textContent = 'Verdächtige Signatur';
     meta.textContent = `Mögliche Glamour-Rückstände (${result.anomalyScore}%).`;
