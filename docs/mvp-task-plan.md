@@ -1,74 +1,75 @@
-# Critter Switch – MVP Task-Plan
+# Critter Switch – MVP Task-Plan (umsetzungsnah)
 
-## Phase 0 – Foundation (1–2 days)
+## Phase 0 – Projektfundament (1–2 Tage)
+- [ ] React + TypeScript + Vite Setup
+- [ ] Grundlayout für Tablet-Landscape
+- [ ] Theme-Tokens (dark surfaces, neon-lime/purple Akzente)
+- [ ] Routing + leere Screen-Shells für den Hauptflow
 
-- [ ] Project bootstrap (React + TS + Vite)
-- [ ] Basic layout shell for tablet landscape
-- [ ] Theme tokens and core components (buttons/panels/badges)
-- [ ] Routing scaffold for all target screens
+**Ergebnis:** klickbarer Roh-Flow ohne Business-Logik.
 
-**Deliverable:** clickable skeleton without business logic.
+## Phase 1 – Kernloop „Scan“ (3–4 Tage)
+- [ ] Kamera-Berechtigung, Live-Preview, Capture
+- [ ] Photo-Preview mit `Use Photo` / `Retake`
+- [ ] Fake-Analysis Engine (10–20s) mit Phasen und Text-Rotation
+- [ ] Weighted Result Engine (Human/Suspect/Kobold)
+- [ ] Result Screens mit klaren CTAs
 
-## Phase 1 – Core Scan Loop (3–4 days)
+**Ergebnis:** vollständiger Entertainment-Loop ohne KI-Transform.
 
-- [ ] Camera permission + live preview
-- [ ] Photo capture + preview (use/retake)
-- [ ] Fake analysis engine with timed narrative feed
-- [ ] Result engine (human/suspect/kobold) with weighted randomness
-- [ ] Result screens with primary CTAs
+## Phase 2 – Lokale Sammlung (2–3 Tage)
+- [ ] IndexedDB Schema + Repositories
+- [ ] Speichern von Human/Suspect/Kobold Funden
+- [ ] Archive Grid + Filter
+- [ ] Detailansicht je Eintrag
 
-**Deliverable:** complete entertainment loop without AI transform.
+**Ergebnis:** Scans bleiben lokal erhalten und sind wieder aufrufbar.
 
-## Phase 2 – Local Persistence & Collection (2–3 days)
+## Phase 3 – Progression (1–2 Tage)
+- [ ] XP-Regeln implementieren
+- [ ] Level-Berechnung + UI Widget
+- [ ] Rewards/Badges für seltene Funde
 
-- [ ] IndexedDB schema + repository layer
-- [ ] Save result entries (human/suspect/kobold)
-- [ ] Archive grid + filters
-- [ ] Detail view for entries
+**Ergebnis:** sichtbare Motivation über Fortschritt.
 
-**Deliverable:** local collection and replayability baseline.
+## Phase 4 – Transform Integration (3–4 Tage)
+- [ ] Google OAuth Flow
+- [ ] Modellauswahl in Settings
+- [ ] Prompt Composer mit Presets + Slidern
+- [ ] Transform Running / Result / Error Screens
+- [ ] Timeout + Retry + Save-without-transform
 
-## Phase 3 – Progression System (1–2 days)
+**Ergebnis:** End-to-End Kobold-Transformation online+auth möglich.
 
-- [ ] XP award rules
-- [ ] Level calculation model
-- [ ] Progress widget on home/archive/result
+## Phase 5 – PWA & Offline (2 Tage)
+- [ ] Manifest, Icons, Theme Color
+- [ ] Service Worker (App-Shell offline)
+- [ ] Offline-Gating für Transform
+- [ ] Offline-Meldungen und robuste Fallbacks
 
-**Deliverable:** visible progression and reward loop.
+**Ergebnis:** installierbare PWA mit stabilem Offline-Grundverhalten.
 
-## Phase 4 – AI Transform Integration (3–4 days)
+## Phase 6 – UX-Polish & QA (2–3 Tage)
+- [ ] Textpool erweitern (Scanner-Flair)
+- [ ] Anti-Repetition Tuning
+- [ ] Touch/Accessibility Pass
+- [ ] Tablet Device QA (Landscape Fokus)
+- [ ] Bugs + Release Checklist
 
-- [ ] OAuth setup flow
-- [ ] API client abstraction + model config
-- [ ] Prompt composer with style presets/sliders
-- [ ] Transform running / success / error screens
-- [ ] Retry + timeout handling
+**Ergebnis:** MVP-Kandidat für Family-Playtests.
 
-**Deliverable:** end-to-end kobold transformation flow.
+---
 
-## Phase 5 – PWA & Reliability (2 days)
-
-- [ ] Manifest, icons, theme color
-- [ ] Service worker and app-shell offline support
-- [ ] Network-aware transform gating
-- [ ] Graceful fallbacks for no internet
-
-**Deliverable:** installable PWA with robust offline behavior.
-
-## Phase 6 – Polish & QA (2–3 days)
-
-- [ ] Text pool expansion for scanner flavor lines
-- [ ] Anti-repetition tuning for result/rarity/text
-- [ ] Touch target/accessibility pass
-- [ ] Device QA (tablet landscape focus)
-- [ ] Bug fixes + release checklist
-
-**Deliverable:** MVP candidate ready for family playtesting.
+## Backlog nach MVP
+- [ ] mehr Kobold-Klassen und Lore-Generator
+- [ ] stärkere Archive-Filter und Sortierung
+- [ ] animierter Before/After Vergleich
+- [ ] lokaler Export/Share
+- [ ] zusätzliche Stil-Presets
 
 ## Definition of Done (MVP)
-
-- User can complete full loop from Home → Capture → Analyze → Result.
-- Kobold results can be transformed via API when online+authenticated.
-- All results can be saved and reviewed locally in archive.
-- XP/Level visibly updates.
-- App is installable and app shell works offline.
+- [ ] Flow funktioniert: Home → Capture → Analyze → Result
+- [ ] Kobold-Result kann transformiert werden (bei online + auth)
+- [ ] Ergebnisse sind lokal speicherbar und im Archive sichtbar
+- [ ] XP/Level aktualisieren konsistent
+- [ ] App ist als PWA installierbar und Shell läuft offline

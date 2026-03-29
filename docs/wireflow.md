@@ -1,215 +1,242 @@
-# Critter Switch – Wireflow (V1)
+# Critter Switch – Wireflow & Screen-Spec (V1)
 
-## 1) Global Navigation / Entry Points
+## 1) Primäre Navigation
 
-- **Primary route:** `HOME`
-- **Secondary persistent actions:** `ARCHIVE`, `SETTINGS`
-- **Contextual routes:** `CAMERA`, `ANALYZING`, result states, transform states
-- **Overlay routes:** `OAUTH_SETUP`, permission/error dialogs
+- Home / Scanner
+- Archive
+- Settings
 
-## 2) Screen-by-Screen Wireflow
+Kontext-Screens (Camera, Analysis, Transform) reduzieren die Hauptnavigation visuell, um Fokus zu halten.
 
-## BOOT / SPLASH
+## 2) Wireflow (Kurzform)
 
-**UI Elements**
-- Logo + system status
-- Boot message ticker
+```text
+Splash
+  -> Scanner Home
+Scanner Home
+  -> Camera Capture
+  -> Archive
+  -> Settings
+Camera Capture
+  -> Photo Preview
+  -> Home
+Photo Preview
+  -> Analysis Running
+  -> Camera Capture
+Analysis Running
+  -> Result Human
+  -> Result Suspect
+  -> Result Kobold Detected
+Result Human
+  -> Camera Capture
+  -> Home
+Result Suspect
+  -> Camera Capture
+  -> Home
+  -> Transform Running (optional)
+Result Kobold Detected
+  -> Transform Running
+  -> Save Detection
+  -> Home
+Transform Running
+  -> Transform Result
+  -> Transform Error
+Transform Error
+  -> Retry Transform
+  -> Result Kobold Detected
+Transform Result
+  -> Save to Archive
+  -> Critter Detail
+  -> Camera Capture
+  -> Home
+Archive
+  -> Critter Detail
+  -> Home
+Settings
+  -> OAuth Setup
+OAuth Setup
+  -> back to Settings or Transform Flow
+```
 
-**Transitions**
-- Auto (1–2s) → `HOME`
-- If `first_launch=true` and PWA not installed, optional install hint overlay
+## 3) Screen-Spezifikation
 
----
+## 01 – Splash / Boot
+**Zweck:** kurzer atmosphärischer Einstieg.
 
-## HOME (Scanner Home)
+**Elemente:** Branding, System-Status, Boot-Ticker.
 
-**Primary CTA**
-- `Start Check` → `CAMERA`
-
-**Secondary Actions**
-- `Archive` → `ARCHIVE`
-- `Settings` → `SETTINGS`
-
-**Atmospheric Data (read-only)**
-- Latest capture label
-- Sensor status
-- Threat flavor indicator
-
----
-
-## CAMERA (Live Capture)
-
-**Actions**
-- `Capture` → `PHOTO_PREVIEW`
-- `Cancel/Back` → `HOME`
-
-**Edge states**
-- `permission=denied` → `CAMERA_PERMISSION_BLOCKED`
-- `camera_unavailable` → fallback text + back to `HOME`
-
----
-
-## PHOTO_PREVIEW
-
-**Actions**
-- `Use Photo` → `ANALYZING`
-- `Retake` → `CAMERA`
-- `Cancel` → `HOME`
-
----
-
-## ANALYZING (10–20s dramatized)
-
-**Behavior**
-- Pseudo-analysis feed runs via timer
-- Last ~3s visual lock-on pulse
-
-**Transitions (weighted random)**
-- `RESULT_HUMAN`
-- `RESULT_SUSPECT`
-- `RESULT_KOBOLD`
-
-**Actions while running**
-- Optional `Abort` → `HOME`
+**Transition:** automatisch nach 1–2s zu Home.
 
 ---
 
-## RESULT_HUMAN
+## 02 – Scanner Home
+**Zweck:** zentraler Startscreen.
 
-**Content**
-- Original image
-- Human confirmation text + scanner flavor
+**Pflicht-Elemente:**
+- Start Check (dominanter CTA)
+- Archive Shortcut
+- Settings Shortcut
+- atmosphärische Statuslabels
 
-**Actions**
-- `Scan Again` → `CAMERA`
-- `Save to Archive` → save + toast
-- `Home` → `HOME`
-
----
-
-## RESULT_SUSPECT
-
-**Content**
-- Original image
-- Uncertain signal score
-
-**Actions**
-- `Rescan` → `CAMERA`
-- `Save Suspicion` → save + toast
-- Optional `Force Transform` → `TRANSFORMING`
-- `Home` → `HOME`
+**Aktionen:**
+- Start Check → Camera
+- Archive → Archive
+- Settings → Settings Drawer
 
 ---
 
-## RESULT_KOBOLD
+## 03 – Camera Capture
+**Zweck:** Foto aufnehmen.
 
-**Content**
-- Original image
-- Kobold class + rarity + traits
+**Pflicht-Elemente:**
+- Live-Preview
+- Capture Button
+- Cancel/Back
+- dezentes Scan-Overlay
 
-**Actions**
-- `Transform Subject` → `TRANSFORMING`
-- `Save Detection` → save original classification
-- `Scan Next` → `CAMERA`
-- `Home` → `HOME`
-
----
-
-## TRANSFORMING
-
-**Behavior**
-- Executes real API transform
-- Pseudo-tech progress feed shown independently
-
-**Transitions**
-- success → `TRANSFORM_RESULT`
-- timeout/error → `TRANSFORM_ERROR`
+**Edge Case:** kein Kamerazugriff → Permission-Fallbackscreen.
 
 ---
 
-## TRANSFORM_ERROR
+## 04 – Photo Preview
+**Zweck:** Bestätigung vor Analyse.
 
-**Content**
-- Error classification (timeout/network/auth)
-- Original scan preserved
-
-**Actions**
-- `Retry` → `TRANSFORMING`
-- `Save without Transform` → archive entry
-- `Back to Kobold Result` → `RESULT_KOBOLD`
+**Aktionen:**
+- Use Photo → Analysis
+- Retake → Camera
+- optional Cancel → Home
 
 ---
 
-## TRANSFORM_RESULT
+## 05 – Analysis Running
+**Zweck:** pseudo-technische Dramaturgie (10–20s).
 
-**Content**
-- Generated kobold image
-- Before/after compare
-- Rarity + XP gain
+**Analysephasen:**
+1. Subject acquisition
+2. Humanoid shell check
+3. Spectral anomaly scan
+4. Glamour veil inspection
+5. Classification lock
 
-**Actions**
-- `Save to Archive` → save + toast
-- `View Details` → `DETAIL`
-- `Scan Next` → `CAMERA`
-- `Home` → `HOME`
-
----
-
-## ARCHIVE
-
-**Content**
-- Grid list with filters (All/Human/Suspect/Kobold/Rare)
-- XP + level widget
-
-**Actions**
-- tap entry → `DETAIL`
-- delete entry
-- back/home
+**Transition:** automatisch zu Human/Suspect/Kobold.
 
 ---
 
-## DETAIL
+## 06 – Result Human
+**Zweck:** All-clear Ergebnis.
 
-**Content**
-- Full image(s), metadata, lore, traits
-
-**Actions**
-- `Back to Archive` → `ARCHIVE`
-- optional delete
-
----
-
-## SETTINGS (Drawer/Modal)
-
-**Sections**
-- API/Auth
-- Transformation style/intensity
-- Analysis time + hit frequency
-- Local data controls
-- PWA/install hints
-
-**Actions**
-- `Save/Close` → previous screen
-- If auth required → `OAUTH_SETUP`
+**CTAs:**
+- Scan Again
+- Back Home
+- optional Save Scan
 
 ---
 
-## OAUTH_SETUP
+## 07 – Result Suspect
+**Zweck:** unklare Signatur als Varianz.
 
-**Actions**
-- `Login with Google` (OAuth)
-- model selection
-- return to previous context
+**CTAs:**
+- Rescan
+- Save Suspicion
+- optional Force Transform
+- Back Home
 
-## 3) State Conditions / Guards
+---
 
-- `canTransform = isOnline && isAuthenticated && modelConfigured`
+## 08 – Result Kobold Detected
+**Zweck:** Jackpot vor Transform.
+
+**Pflicht-Elemente:**
+- Kobold-Klasse
+- Rarity
+- Trait-Werte
+- großer Transform CTA
+
+**CTAs:**
+- Transform Subject
+- Save Detection
+- Back Home
+
+---
+
+## 09 – Transform Running
+**Zweck:** API-Lauf sichtbar machen.
+
+**Inhalt:** Originalbild + Progress-Inszenierung + Statusmeldungen.
+
+**Transition:** success → Transform Result / error → Transform Error.
+
+---
+
+## 10 – Transform Result
+**Zweck:** finaler Wow-Screen.
+
+**CTAs:**
+- Save to Archive
+- View Detail
+- Scan Next
+- Back Home
+
+**Optional:** Before/After Toggle.
+
+---
+
+## 11 – Transform Error
+**Zweck:** robuste Fehlerbehandlung.
+
+**CTAs:**
+- Retry Transform
+- Save Detection Only
+- Back
+
+**Fehlerstatus:** timeout, auth, network.
+
+---
+
+## 12 – Archive / Collection
+**Zweck:** lokale Sammlung + Motivation.
+
+**Filter:** All, Humans, Suspects, Kobolds, Rare+.
+
+**Eintrag:** Thumbnail, Typ, Rarity, Datum, Stil.
+
+---
+
+## 13 – Critter Detail
+**Zweck:** Detailansicht gespeicherter Funde.
+
+**Inhalte:** Bild(er), Klassifikation, Rarity, Traits/Lore, Datum.
+
+**CTAs:** Back to Archive, Delete Entry.
+
+---
+
+## 14 – Settings
+**Zweck:** kompakte Konfiguration.
+
+**Bereiche:**
+1. Account/API
+2. Transformation Style
+3. Analysis Behavior
+4. Collection/Storage
+5. App/PWA
+
+---
+
+## 15 – OAuth / API Setup
+**Zweck:** Login + API-Nutzung erklären.
+
+**Kernhinweis:** Bilder bleiben lokal, nur ausgewählte Bilder gehen für Transform an die API.
+
+## 4) Flow Guards
+
 - `canCapture = cameraPermissionGranted`
-- `saveAllowed = imageBlobExists && classificationExists`
+- `canTransform = isOnline && isAuthenticated && modelConfigured`
+- `canSave = imageRefExists && classificationExists`
 
-## 4) Wireflow Notes for UX
+## 5) UX-Regeln für alle Screens
 
-- Keep one dominant CTA per screen.
-- Preserve captured photo throughout result + transform flows.
-- Prefer modal/drawer patterns for settings/setup to avoid flow loss.
-- Avoid dead ends: every state has a clear “back to scan” or “home” path.
+- Pro Screen **ein dominanter CTA**
+- Große Touch-Zonen (Tablet)
+- Keine Sackgassen: immer Home- oder Scan-Weiterführung
+- Dekorative Tech-Labels nur ergänzend, nie CTA verdrängen

@@ -1,59 +1,64 @@
 # Critter Switch – Technisches Umsetzungsdokument (V1)
 
-## 1. Zielbild
+## 1) Zielbild und Leitplanken
 
-Eine tablet-optimierte PWA mit lokalem Speicher, pseudo-analytischem Scan-Flow, zufallsbasierter Ergebnislogik und optionaler KI-Transformation via API.
+Critter Switch ist eine **Entertainment-first PWA** für Tablet-Landscape. Der Kernloop ist inszeniert (Fake-Analyse + Zufallsentscheidung), während die Bildtransformation via API der reale technische Effekt ist.
 
-## 2. Architektur (Frontend-first)
+**Nicht-Ziele für V1:**
+- keine echte Gesichtsanalyse
+- kein Multiplayer / keine Cloud-Profile
+- keine Monetarisierung
 
-## Stack (empfohlen)
-- React + TypeScript
-- Vite
-- Zustand oder Redux Toolkit (kleiner globaler State)
-- IndexedDB (Dexie) für lokale Daten
-- React Router (zustandsbasierte Routen + Modals)
-- Workbox Service Worker für PWA caching
+## 2) Architekturübersicht
 
-## Schichten
-1. **UI Layer** (Screens, Components, animations)
-2. **Domain Layer** (scan engine, result randomizer, progression)
-3. **Data Layer** (indexedDB repositories, settings store)
-4. **Integration Layer** (camera APIs, OAuth, transform API)
+## Empfohlener Stack
+- React + TypeScript + Vite
+- React Router (state-driven Flows + modal routes)
+- Zustand (UI- und Domain-State)
+- Dexie (IndexedDB Persistenz)
+- Workbox (Service Worker, App-Shell Caching)
 
-## 3. Modulstruktur
+## Layer-Modell
+1. **Presentation Layer** (Screens, Komponenten, Animation)
+2. **Flow/Domain Layer** (Scan-Flow, State-Machine, Result Engine, XP)
+3. **Persistence Layer** (Archive, Settings, Progress in IndexedDB)
+4. **Integration Layer** (Kamera, OAuth, Transform-API, Netzwerkstatus)
+
+## 3) Modulstruktur (Vorschlag)
 
 ```text
 src/
   app/
     router.tsx
     providers.tsx
+    appStore.ts
+  flows/
+    scanFlowMachine.ts
   modules/
-    scan/
-      scanMachine.ts
-      fakeAnalysisEngine.ts
-      resultEngine.ts
-      rarityEngine.ts
     camera/
       cameraService.ts
+      captureUtils.ts
+    analysis/
+      fakeAnalysisEngine.ts
+      analysisTextPool.ts
+    results/
+      resultEngine.ts
+      rarityEngine.ts
+      antiRepetition.ts
     transform/
       transformService.ts
-      promptBuilder.ts
+      promptComposer.ts
+      transformGuards.ts
     archive/
       archiveRepository.ts
+      archiveSelectors.ts
     progression/
-      xpService.ts
+      xpEngine.ts
+      levelEngine.ts
     settings/
       settingsStore.ts
     auth/
-      authService.ts
-  screens/
-    HomeScreen.tsx
-    CameraScreen.tsx
-    AnalysisScreen.tsx
-    ResultScreen.tsx
-    TransformScreen.tsx
-    ArchiveScreen.tsx
-    DetailScreen.tsx
+      googleAuthService.ts
   db/
     schema.ts
     client.ts
@@ -62,43 +67,58 @@ src/
     sw.ts
 ```
 
-## 4. State-Management
+## 4) App State und State-Machine
 
-## Core App State
+## Globaler Zustand
 - `currentScreen`
+- `previousScreen`
+- `networkStatus` (`online` | `offline`)
+- `authStatus` (`connected` | `missing` | `error`)
+
+## Flow-spezifischer Zustand
 - `activeScanSession`
-- `analysisRuntime`
-- `result`
-- `transformJob`
-- `networkStatus`
-- `authStatus`
+- `analysisRuntime` (phase, elapsedMs, totalMs)
+- `resultState` (human/suspect/kobold + metadata)
+- `transformJob` (idle/running/success/error)
 
-## Persistenter State
-- `settings`
-- `archiveEntries`
-- `progression`
+## Ziel-State-Machine
+```text
+BOOT -> HOME -> CAMERA -> PHOTO_PREVIEW -> ANALYZING
+ANALYZING -> RESULT_HUMAN | RESULT_SUSPECT | RESULT_KOBOLD
+RESULT_KOBOLD -> TRANSFORMING -> TRANSFORM_RESULT | TRANSFORM_ERROR
+TRANSFORM_ERROR -> TRANSFORMING (retry) | RESULT_KOBOLD
+ARCHIVE <-> DETAIL
+SETTINGS -> previous
+OAUTH_SETUP -> previous or transform context
+```
 
-## 5. Datenmodell (V1)
+## 5) Datenmodell (IndexedDB)
 
-## ScanSession
+## Tabelle `scanSessions`
 - `id`
 - `createdAt`
-- `sourceImageRef`
+- `originalImageRef`
 - `analysisDurationMs`
-- `resultType` (human/suspect/kobold)
-- `rarity?`
+- `resultType` (`human` | `suspect` | `kobold`)
+- `anomalyScore?`
 - `koboldClass?`
+- `rarity?`
 
-## TransformJob
+## Tabelle `transformJobs`
 - `id`
 - `scanSessionId`
-- `status` (queued/running/success/error)
-- `promptPreset`
+- `status` (`queued` | `running` | `success` | `error`)
+- `model`
+- `stylePreset`
+- `promptVersion`
 - `outputImageRef?`
 - `errorCode?`
+- `startedAt`
+- `finishedAt?`
 
-## ArchiveEntry
+## Tabelle `archiveEntries`
 - `id`
+- `scanSessionId`
 - `savedAt`
 - `classification`
 - `rarity?`
@@ -107,103 +127,125 @@ src/
 - `transformImageRef?`
 - `xpAwarded`
 
-## UserSettings
-- `analysisPace` (short/standard/dramatic)
-- `hitRateProfile` (low/normal/chaotic)
+## Tabelle `settings`
+- `analysisPace` (`short` | `standard` | `dramatic`)
+- `hitRateProfile` (`low` | `normal` | `chaotic`)
 - `stylePreset`
 - `funMean`
 - `cuteUgly`
 - `cleanGrimy`
-- `autoSavePolicy`
 - `selectedModel`
+- `autoSaveBehavior`
 
-## ProgressState
+## Tabelle `progression`
 - `level`
 - `xpCurrent`
 - `xpTotal`
 - `legendaryCount`
 - `discoveredClasses`
+- `lastUnlock`
 
-## 6. Result Engine
+## 6) Result Engine (Random + Anti-Repetition)
 
-## Baseline weights
-- Human 45%
-- Suspect 20%
-- Kobold 35%
+## Baseline (Standard)
+- Human: 45%
+- Suspect: 20%
+- Kobold: 35%
 
-## Anti-Repetition
-- penalize same `resultType` if repeated >=2x
-- penalize same `rarity` if repeated recently
-- rotate text pools without immediate duplicates
+## Alternative Family-Fun Profil
+- Human: 35%
+- Suspect: 15%
+- Kobold: 50%
 
-## Rarity distribution (kobold only)
-- Common 60, Uncommon 25, Rare 10, Epic 4, Legendary 1
+## Kobold-Rarity
+- Common 60%
+- Uncommon 25%
+- Rare 10%
+- Epic 4%
+- Legendary 1%
 
-## 7. Fake Analysis Engine
+## Anti-Repetition Regeln
+- gleicher `resultType` >2x in Folge bekommt temporäre Strafe
+- gleiche `rarity` in kurzer Folge wird heruntergewichtet
+- Textbausteine rotieren ohne direkte Duplikate
 
-- random duration from settings profile
-- scripted phases:
-  1) baseline acquisition
-  2) spectral cross-check
-  3) anomaly escalation
-  4) lock-on finale
-- emits UI frames every 200–400ms
-- does **not** use biometric inference
+## 7) Fake Analysis Engine
 
-## 8. Transform Service
+- Laufzeit 10–20 Sekunden (settings-abhängig)
+- Phasen:
+  1. Subject Acquisition
+  2. Humanoid Shell Check
+  3. Spectral Residue Scan
+  4. Glamour Veil Inspection
+  5. Classification Lock
+- UI-Ticks alle 200–400ms
+- letzte 20%: verstärkter Lock-on Effekt
 
-- input: original image blob + style params + prompt template
-- guard checks: online + auth + model
-- timeout handling (e.g., 30–45s)
-- retry with exponential backoff (max 2 in UI action scope)
-- return generated image blob URL + metadata
+**Wichtig:** keine biometrische Auswertung; rein dramaturgisch.
 
-## 9. Kamera-Modul
+## 8) Transform Service (API)
 
-- `navigator.mediaDevices.getUserMedia`
-- capture frame to canvas/blob
-- permission error mapping:
+## Guards vor Start
+- online?
+- OAuth verbunden?
+- Modell gewählt?
+
+## Ablauf
+1. Prompt aus Settings + Klassifikation bauen
+2. API-Request mit Originalbild senden
+3. Timeout (z. B. 45s)
+4. Retry (max 2, exponentieller Backoff)
+5. Ergebnisbild lokal speichern und referenzieren
+
+## Fehlerklassen
+- `network`
+- `timeout`
+- `auth`
+- `api_unknown`
+
+## 9) Kamera-Modul
+
+- `getUserMedia` mit Tablet-optimierter Auflösung
+- Capture via Canvas Snapshot
+- Permission States:
   - denied
-  - not found
-  - in use
+  - prompt
+  - granted
+- Fallback-Screen bei blockierter Kamera
 
-## 10. OAuth/API
+## 10) OAuth und Sicherheit
 
-- Google OAuth login/logout
-- token state in memory + secure local persistence where needed
-- show explicit “images sent only for transformation” disclosure
-- model selector in settings
+- Google OAuth Login/Logout
+- Token nur für Transform-Flow nutzen
+- UI-Disclosure: Bilder bleiben lokal; nur ausgewählte Bilder werden zur Transformation gesendet
+- Keine serverseitige Familien-Cloud in V1
 
-## 11. PWA-Anforderungen
+## 11) PWA und Offline
 
-- manifest with app name/icons/theme/background
-- service worker:
-  - precache app shell
-  - runtime cache for static assets
-  - network-first for transform calls (no cache)
-- offline behavior:
-  - scan flow available
-  - transform unavailable with actionable message
+## Muss-Kriterien
+- installierbar (Manifest + Icons)
+- App-Shell offline nutzbar
+- Home/Archive/Settings offline verfügbar
+- Transform offline klar deaktiviert + Retry-Hinweis
 
-## 12. UX/Performance Requirements
+## Service Worker Strategie
+- precache: shell, fonts, icons, core routes
+- runtime cache: statische Assets
+- network-first: API Transform Requests
 
-- landscape-first breakpoints
-- large touch targets (>=44px)
-- transition feedback under 100ms for tap interactions
-- transform loading skeleton + progress narrative
+## 12) Performance- und UX-Budgets
 
-## 13. Telemetrie (lokal oder optional)
+- Touch Targets >= 44px
+- Tap-Feedback < 100ms
+- Screen-Wechsel flüssig auf typischen Tablets
+- Analyse/Tansform States nie ohne sichtbares Feedback
 
-- track counts only (no cloud by default)
-- scans started/completed
-- result distribution
-- transform success/error rates
+## 13) Umsetzung in Inkrementen
 
-## 14. MVP Delivery Phasen
-
-1. Shell + navigation + settings skeleton
-2. camera + preview + fake analysis
-3. result engine + result screens
-4. archive + progression
-5. transform integration + auth
-6. PWA hardening + offline states + polish
+1. Shell + Routing + Theme-Tokens
+2. Camera + Preview + Fake Analysis
+3. Result Engine + Result Screens
+4. Archive + Detail + Persistenz
+5. Progression + XP/Level
+6. OAuth + Transform API + Error Handling
+7. PWA Hardening + Offline + QA
