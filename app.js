@@ -116,6 +116,7 @@ function bindCoreActions() {
   $('#quickScanBtn').addEventListener('click', openCameraFlow);
   $('#cameraCancelBtn').addEventListener('click', () => showScreen('home'));
   $('#switchCameraBtn').addEventListener('click', switchCamera);
+  $('#cameraSettingsBtn').addEventListener('click', () => showScreen('settings'));
   $('#captureBtn').addEventListener('click', capturePhoto);
   $('#retakeBtn').addEventListener('click', openCameraFlow);
   $('#usePhotoBtn').addEventListener('click', runAnalysis);
@@ -204,6 +205,7 @@ function showScreen(screen) {
   $$('.screen').forEach((s) => s.classList.toggle('active', s.dataset.screen === screen));
   $$('.nav-item').forEach((n) => n.classList.toggle('active', n.dataset.nav === screen));
   $('#stateText').textContent = `STATUS: ${screen.toUpperCase()}`;
+  document.body.classList.toggle('camera-mode', screen === 'camera');
 
   if (screen !== 'camera') stopCamera();
 }
@@ -313,6 +315,7 @@ function produceResult() {
     rarity,
     koboldClass: type === 'kobold' ? randomFrom(['Moorfunke', 'Laternenknabberer', 'Dachbalken-Imp', 'Kupferschleicher']) : null,
     image: state.captureDataUrl,
+    captureMeta: buildCaptureMeta(),
     transformedImage: '',
     style: state.settings.style,
     model: state.settings.model,
@@ -322,6 +325,7 @@ function produceResult() {
   };
 
   updateResultScreen();
+  syncCurrentResultToArchive();
   showScreen('result');
 }
 
@@ -413,6 +417,7 @@ function finishTransform(transformed) {
   state.comparingAfter = true;
   $('#compareToggleBtn').textContent = 'Vorher anzeigen';
   showScreen('transformResult');
+  syncCurrentResultToArchive();
 
   if (state.settings.autoSaveBehavior === 'always') {
     saveCurrentResult(true);
@@ -441,6 +446,7 @@ function openArchiveDetail(id) {
 }
 
 function renderDetail(entry) {
+  const captureMeta = entry.captureMeta || {};
   $('#detailImage').src = entry.transformedImage || entry.image;
   $('#detailMeta').innerHTML = `
     <label><strong>Typ</strong><span>${typeLabels[entry.type]}</span></label>
@@ -448,6 +454,9 @@ function renderDetail(entry) {
     <label><strong>Klasse</strong><span>${entry.koboldClass || '–'}</span></label>
     <label><strong>Stil</strong><span>${entry.style}</span></label>
     <label><strong>Modell</strong><span>${entry.model || '–'}</span></label>
+    <label><strong>Format</strong><span>${captureMeta.formatLabel || 'Unbekannt'}</span></label>
+    <label><strong>Ausrichtung</strong><span>${captureMeta.orientationLabel || 'Unbekannt'}</span></label>
+    <label><strong>Gerät</strong><span>${captureMeta.deviceLabel || 'Unbekannt'}</span></label>
     <label><strong>Datum</strong><span>${new Date(entry.createdAt).toLocaleString('de-DE')}</span></label>
     <label><strong>Traits</strong><span>${entry.traits ? entry.traits.join(', ') : '–'}</span></label>
     <label><strong>Lore</strong><span>${entry.lore || '–'}</span></label>
@@ -468,18 +477,9 @@ function deleteSelectedEntry() {
 
 function saveCurrentResult(fromTransform) {
   if (!state.currentResult) return;
-
-  const entry = {
-    ...state.currentResult,
-    transformedImage: fromTransform ? state.currentResult.transformedImage : state.currentResult.transformedImage || '',
-    xpAwarded: xpForResult(state.currentResult),
-  };
-
-  state.archive.unshift(entry);
-  persist(storageKeys.archive, state.archive);
-  awardXp(entry.xpAwarded, entry.rarity);
-  renderArchive();
-  state.selectedArchiveId = entry.id;
+  if (fromTransform && !state.currentResult.transformedImage) return;
+  syncCurrentResultToArchive();
+  state.selectedArchiveId = state.currentResult.id;
   showScreen('archive');
 }
 
@@ -508,10 +508,13 @@ function renderArchive() {
   grid.innerHTML = list
     .map((entry) => {
       const image = entry.transformedImage || entry.image;
+      const captureMeta = entry.captureMeta || {};
+      const ratio = Number(captureMeta.width) > 0 && Number(captureMeta.height) > 0 ? `${captureMeta.width} / ${captureMeta.height}` : '16 / 10';
       return `
         <article class="archive-card" data-open-id="${entry.id}">
-          <img src="${image}" alt="${typeLabels[entry.type]}-Fund" />
+          <img src="${image}" alt="${typeLabels[entry.type]}-Fund" style="--capture-ratio:${ratio};" />
           <p><strong>${typeLabels[entry.type].toUpperCase()}</strong>${entry.rarity ? ` · ${rarityLabels[entry.rarity].toUpperCase()}` : ''}</p>
+          <p class="archive-format">${captureMeta.formatLabel || 'Format unbekannt'} · ${captureMeta.orientationLabel || 'Ausrichtung unbekannt'}</p>
           <p class="muted">${new Date(entry.createdAt).toLocaleString('de-DE')}</p>
         </article>
       `;
@@ -814,6 +817,38 @@ function buildLore(type, rarity) {
   if (type !== 'kobold') return 'Kein Kobold-Lore-Eintrag vorhanden.';
   const rarityText = rarityLabels[rarity] || 'Häufig';
   return `${rarityText}er Feldbericht: Sichtung im Bereich alter Dachbalken, reagiert auf Neonlicht und Süßigkeiten.`;
+}
+
+function syncCurrentResultToArchive() {
+  if (!state.currentResult) return;
+  const existingIndex = state.archive.findIndex((entry) => entry.id === state.currentResult.id);
+  const merged = {
+    ...state.currentResult,
+    xpAwarded: existingIndex >= 0 ? state.archive[existingIndex].xpAwarded : xpForResult(state.currentResult),
+  };
+  if (existingIndex >= 0) {
+    state.archive[existingIndex] = merged;
+  } else {
+    state.archive.unshift(merged);
+    awardXp(merged.xpAwarded, merged.rarity);
+  }
+  persist(storageKeys.archive, state.archive);
+  renderArchive();
+}
+
+function buildCaptureMeta() {
+  const width = Number(state.captureWidth) || 0;
+  const height = Number(state.captureHeight) || 0;
+  const orientationLabel = width >= height ? 'Querformat' : 'Hochformat';
+  const cameraLabel = state.cameraFacingMode === 'environment' ? 'Rückkamera' : 'Frontkamera';
+  const trackLabel = state.cameraStream?.getVideoTracks?.()[0]?.getSettings?.().deviceId ? 'Kamera-Stream' : 'Simulierte Quelle';
+  return {
+    width,
+    height,
+    orientationLabel,
+    formatLabel: width > 0 && height > 0 ? `${width} × ${height}` : 'Unbekannt',
+    deviceLabel: `${cameraLabel} · ${trackLabel}`,
+  };
 }
 
 function load(key, fallback) {
