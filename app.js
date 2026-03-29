@@ -10,6 +10,7 @@ const storageKeys = {
 const defaults = {
   settings: {
     hitRate: 'normal',
+    koboldChance: 35,
     pace: 'standard',
     style: 'funny',
     model: 'gemini-3.1-flash-image-preview',
@@ -120,7 +121,9 @@ function bindCoreActions() {
   $('#usePhotoBtn').addEventListener('click', runAnalysis);
   $('#resultHomeBtn').addEventListener('click', () => showScreen('home'));
   $('#saveResultBtn').addEventListener('click', () => saveCurrentResult(false));
+  $('#downloadResultBtn').addEventListener('click', downloadCurrentResultImage);
   $('#saveTransformBtn').addEventListener('click', () => saveCurrentResult(true));
+  $('#downloadTransformBtn').addEventListener('click', downloadCurrentTransformImage);
   $('#saveDetectionBtn').addEventListener('click', () => saveCurrentResult(false));
   $('#scanNextBtn').addEventListener('click', openCameraFlow);
   $('#retryTransformBtn').addEventListener('click', () => startTransform(0));
@@ -130,6 +133,7 @@ function bindCoreActions() {
   $('#deleteEntryBtn').addEventListener('click', deleteSelectedEntry);
   $('#compareToggleBtn').addEventListener('click', toggleCompareImage);
   $('#shareEntryBtn').addEventListener('click', shareSelectedEntry);
+  $('#downloadDetailBtn').addEventListener('click', downloadSelectedEntryImage);
 
   $$('.ghost-btn[data-open]').forEach((btn) => {
     btn.addEventListener('click', () => showScreen(btn.dataset.open));
@@ -138,6 +142,8 @@ function bindCoreActions() {
 
 function bindSettings() {
   $('#hitRateSelect').value = state.settings.hitRate;
+  $('#koboldChanceRange').value = String(state.settings.koboldChance ?? defaults.settings.koboldChance);
+  $('#koboldChanceValue').textContent = `${state.settings.koboldChance ?? defaults.settings.koboldChance}%`;
   $('#paceSelect').value = state.settings.pace;
   $('#styleSelect').value = state.settings.style;
   $('#modelSelect').value = state.settings.model;
@@ -151,6 +157,11 @@ function bindSettings() {
   $('#sortOrderSelect').value = state.settings.sortOrder;
 
   $('#hitRateSelect').addEventListener('change', (e) => updateSetting('hitRate', e.target.value));
+  $('#koboldChanceRange').addEventListener('input', (e) => {
+    const value = Number(e.target.value);
+    $('#koboldChanceValue').textContent = `${value}%`;
+    updateSetting('koboldChance', value);
+  });
   $('#paceSelect').addEventListener('change', (e) => updateSetting('pace', e.target.value));
   $('#styleSelect').addEventListener('change', (e) => updateSetting('style', e.target.value));
   $('#modelSelect').addEventListener('change', (e) => updateSetting('model', e.target.value));
@@ -515,14 +526,18 @@ function renderArchive() {
 async function shareSelectedEntry() {
   const entry = state.archive.find((item) => item.id === state.selectedArchiveId);
   if (!entry) return;
+  const imageDataUrl = entry.transformedImage || entry.image;
 
   if (navigator.share) {
     try {
-      await navigator.share({
+      const payload = {
         title: 'Critter Switch Fund',
         text: `${typeLabels[entry.type]} – ${entry.koboldClass || 'Scan-Ergebnis'}`,
         url: window.location.href,
-      });
+      };
+      const file = dataUrlToFile(imageDataUrl, `critter-${entry.id}.jpg`);
+      if (file && navigator.canShare?.({ files: [file] })) payload.files = [file];
+      await navigator.share(payload);
     } catch {
       // Nutzerabbruch ignorieren
     }
@@ -558,7 +573,8 @@ function awardXp(amount, rarity) {
 }
 
 function weightedResult(profile) {
-  const weights = hitProfiles[profile] || hitProfiles.normal;
+  const baseWeights = hitProfiles[profile] || hitProfiles.normal;
+  const weights = applyKoboldChance(baseWeights, state.settings.koboldChance);
   const penalized = applyAntiRepetition(weights);
   const roll = Math.random();
 
@@ -571,6 +587,19 @@ function weightedResult(profile) {
   state.resultHistory.push(result);
   state.resultHistory = state.resultHistory.slice(-3);
   return result;
+}
+
+function applyKoboldChance(baseWeights, koboldChance) {
+  const kobold = Math.min(0.9, Math.max(0.05, Number(koboldChance ?? 35) / 100));
+  const humanSuspectTotal = Math.max(0.0001, baseWeights.human + baseWeights.suspect);
+  const humanRatio = baseWeights.human / humanSuspectTotal;
+  const nonKobold = 1 - kobold;
+  const human = nonKobold * humanRatio;
+  return {
+    human,
+    suspect: nonKobold - human,
+    kobold,
+  };
 }
 
 function applyAntiRepetition(weights) {
@@ -806,4 +835,44 @@ function persist(key, value) {
 
 function randomFrom(items) {
   return items[Math.floor(Math.random() * items.length)];
+}
+
+function downloadCurrentResultImage() {
+  if (!state.currentResult) return;
+  downloadDataUrl(state.currentResult.transformedImage || state.currentResult.image, `critter-fund-${state.currentResult.id}.jpg`);
+}
+
+function downloadCurrentTransformImage() {
+  if (!state.currentResult?.transformedImage) return;
+  downloadDataUrl(state.currentResult.transformedImage, `critter-transform-${state.currentResult.id}.jpg`);
+}
+
+function downloadSelectedEntryImage() {
+  const entry = state.archive.find((item) => item.id === state.selectedArchiveId);
+  if (!entry) return;
+  downloadDataUrl(entry.transformedImage || entry.image, `critter-archiv-${entry.id}.jpg`);
+}
+
+function downloadDataUrl(dataUrl, filename) {
+  if (!dataUrl) return;
+  const link = document.createElement('a');
+  link.href = dataUrl;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
+
+function dataUrlToFile(dataUrl, filename) {
+  if (!dataUrl || !dataUrl.startsWith('data:')) return null;
+  const [header, base64 = ''] = dataUrl.split(',');
+  const mime = header.match(/^data:(.+);base64$/)?.[1] || 'image/jpeg';
+  try {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    return new File([bytes], filename, { type: mime });
+  } catch {
+    return null;
+  }
 }
