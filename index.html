@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kobold Detektor – Critter Switch</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <h1>KOBOLD DETEKTOR</h1>
+        <div class="status-dot"><span></span>SYSTEM_ACTIVE <small>v2.0.4-NEON</small></div>
+
+        <nav>
+          <button class="nav-item active" data-tab="scanner">SCANNER</button>
+          <button class="nav-item" data-tab="signals">SIGNALS</button>
+          <button class="nav-item" data-tab="targets">TARGETS</button>
+          <button class="nav-item" data-tab="archive">ARCHIVE</button>
+        </nav>
+
+        <button id="initializeBtn" class="primary-btn">INITIALIZE_SCAN</button>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <span>LOC:[52.5200,13.4050] // SIGNAL_STRENGTH: <b id="strength">88%</b></span>
+          <span id="stateText">STATUS: IDLE_WAITING_FOR_TRIGGER</span>
+        </header>
+
+        <section id="scanner" class="tab-content active">
+          <p class="eyebrow">READY FOR OPERATION</p>
+          <h2>CRITTER <span>SWITCH</span></h2>
+          <p class="lede">Deploy your sensor array and reveal hidden Kobold infestations lurking in the electromagnetic spectrum.</p>
+
+          <button id="startBtn" class="scan-card" aria-label="Start Check">
+            <span class="power">⏻</span>
+            <span>START CHECK</span>
+          </button>
+
+          <div class="stats">
+            <div><small>LATEST_CAPTURE</small><strong id="latestCapture">KOBOLD_TYPE_B</strong></div>
+            <div><small>SENSORS_ACTIVE</small><strong>8/8 ONLINE</strong></div>
+            <div><small>THREAT_LEVEL</small><strong class="warn">MODERATE</strong></div>
+          </div>
+        </section>
+
+        <section id="signals" class="tab-content">
+          <div class="signal-grid">
+            <article>
+              <h3>CRITTER_DATA</h3>
+              <p>Detailed biological and spectral analysis of the detected entity. Current status: monitoring.</p>
+              <ul>
+                <li>STANCE: CAUTIOUS</li>
+                <li>AURA: LUMINESCENT</li>
+                <li>HOSTILITY_INDEX: 12%</li>
+              </ul>
+            </article>
+            <article>
+              <h3>SPECTRAL_SIGNATURE</h3>
+              <div class="meter"><label>ECTO-DENSITY</label><progress value="82" max="100"></progress></div>
+              <div class="meter"><label>HOSTILITY_INDEX</label><progress value="12" max="100"></progress></div>
+            </article>
+          </div>
+        </section>
+
+        <section id="targets" class="tab-content">
+          <h3>ACTIVE TARGETS</h3>
+          <p>KOBOLD_ALPHA — probability 99.2% // velocity 0.2 m/s // ch_freq 433.02 MHz</p>
+        </section>
+
+        <section id="archive" class="tab-content">
+          <h3>ARCHIVE</h3>
+          <p>No old captures decrypted yet.</p>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
