@@ -63,7 +63,7 @@
           </div>
         </section>
 
-        <section class="screen" data-screen="camera">
+        <section class="screen media-screen" data-screen="camera">
           <h3>Kameraaufnahme</h3>
           <p class="muted">Falls verfügbar: Kamera nutzen, sonst lokalen Platzhalter erzeugen.</p>
           <p id="cameraModeLabel" class="muted">Frontkamera</p>
@@ -76,7 +76,7 @@
           </div>
         </section>
 
-        <section class="screen" data-screen="preview">
+        <section class="screen media-screen" data-screen="preview">
           <h3>Fotovorschau</h3>
           <img id="previewImage" class="image-frame" alt="Aufgenommenes Motiv" />
           <div class="cta-row">
@@ -93,13 +93,14 @@
           <div class="progress-track"><div id="analysisProgress"></div></div>
         </section>
 
-        <section class="screen" data-screen="result">
+        <section class="screen media-screen" data-screen="result">
           <h3 id="resultTitle">Ergebnis</h3>
           <img id="resultImage" class="image-frame" alt="Scanergebnis" />
           <p id="resultMeta" class="muted"></p>
           <div class="cta-row">
             <button id="resultPrimaryBtn" class="primary-btn">Erneut scannen</button>
             <button id="saveResultBtn" class="ghost-btn">Speichern</button>
+            <button id="downloadResultBtn" class="ghost-btn">Bild speichern unter</button>
             <button id="resultHomeBtn" class="ghost-btn">Zur Startseite</button>
           </div>
         </section>
@@ -134,6 +135,7 @@
           </div>
           <div class="cta-row">
             <button id="compareToggleBtn" class="ghost-btn">Vorher anzeigen</button>
+            <button id="downloadTransformBtn" class="ghost-btn">Nachher-Bild speichern</button>
             <button id="saveTransformBtn" class="primary-btn">Im Archiv speichern</button>
             <button id="viewDetailBtn" class="ghost-btn">Detailansicht</button>
             <button id="scanNextBtn" class="ghost-btn">Nächsten Scan</button>
@@ -152,12 +154,13 @@
           <div id="archiveGrid" class="archive-grid"></div>
         </section>
 
-        <section class="screen" data-screen="detail">
+        <section class="screen media-screen" data-screen="detail">
           <h3>Fund-Detail</h3>
           <img id="detailImage" class="image-frame" alt="Detailansicht" />
           <div id="detailMeta" class="settings-grid"></div>
           <div class="cta-row">
             <button id="shareEntryBtn" class="ghost-btn">Teilen</button>
+            <button id="downloadDetailBtn" class="ghost-btn">Bild speichern unter</button>
             <button id="deleteEntryBtn" class="ghost-btn">Eintrag löschen</button>
             <button id="backToArchiveBtn" class="primary-btn">Zurück ins Archiv</button>
           </div>
@@ -173,6 +176,11 @@
                 <option value="normal" selected>Standard</option>
                 <option value="chaotic">Chaotisch</option>
               </select>
+            </label>
+            <label>
+              Koboldwahrscheinlichkeit
+              <input id="koboldChanceRange" type="range" min="5" max="90" value="35" />
+              <small id="koboldChanceValue" class="muted">35%</small>
             </label>
             <label>
               Analysetempo

@@ -166,6 +166,23 @@ video,
   background: #131b2f;
 }
 
+.media-screen {
+  width: 100%;
+}
+
+.media-screen h3 {
+  margin-bottom: 8px;
+}
+
+.media-screen video,
+.media-screen .image-frame {
+  width: 100%;
+  max-width: none;
+  max-height: calc(100dvh - 260px);
+  min-height: min(62dvh, 620px);
+  border-radius: 12px;
+}
+
 .ring {
   width: 140px;
   height: 140px;
