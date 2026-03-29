@@ -65,10 +65,12 @@
 
         <section class="screen" data-screen="camera">
           <h3>Kameraaufnahme</h3>
-          <p class="muted">Falls verfügbar: Webcam nutzen, sonst lokalen Platzhalter erzeugen.</p>
+          <p class="muted">Falls verfügbar: Kamera nutzen, sonst lokalen Platzhalter erzeugen.</p>
+          <p id="cameraModeLabel" class="muted">Frontkamera</p>
           <video id="cameraVideo" autoplay playsinline></video>
           <canvas id="captureCanvas" width="640" height="360" hidden></canvas>
           <div class="cta-row">
+            <button id="switchCameraBtn" class="ghost-btn">Kamera wechseln</button>
             <button id="captureBtn" class="primary-btn">Foto aufnehmen</button>
             <button id="cameraCancelBtn" class="ghost-btn">Abbrechen</button>
           </div>
@@ -131,6 +133,7 @@
             </div>
           </div>
           <div class="cta-row">
+            <button id="compareToggleBtn" class="ghost-btn">Vorher anzeigen</button>
             <button id="saveTransformBtn" class="primary-btn">Im Archiv speichern</button>
             <button id="viewDetailBtn" class="ghost-btn">Detailansicht</button>
             <button id="scanNextBtn" class="ghost-btn">Nächsten Scan</button>
@@ -154,6 +157,7 @@
           <img id="detailImage" class="image-frame" alt="Detailansicht" />
           <div id="detailMeta" class="settings-grid"></div>
           <div class="cta-row">
+            <button id="shareEntryBtn" class="ghost-btn">Teilen</button>
             <button id="deleteEntryBtn" class="ghost-btn">Eintrag löschen</button>
             <button id="backToArchiveBtn" class="primary-btn">Zurück ins Archiv</button>
           </div>
@@ -194,6 +198,36 @@
                 <option value="">Bitte wählen</option>
                 <option value="nano-banana-2" selected>Nano Banana 2</option>
                 <option value="sprite-forge-lite">Sprite Forge Lite</option>
+              </select>
+            </label>
+            <label>
+              API-Basis-URL (Platzhalter)
+              <input id="apiBaseUrlInput" type="text" />
+            </label>
+            <label>
+              OAuth-Anbieter
+              <select id="oauthProviderSelect">
+                <option value="google">Google</option>
+                <option value="github">GitHub</option>
+              </select>
+            </label>
+            <label>
+              API-Schlüssel-Hinweis (Platzhalter)
+              <input id="apiKeyHintInput" type="text" />
+            </label>
+            <label>
+              Auto-Speichern
+              <select id="autoSaveSelect">
+                <option value="ask">Immer fragen</option>
+                <option value="always">Transform automatisch speichern</option>
+              </select>
+            </label>
+            <label>
+              Archiv-Sortierung
+              <select id="sortOrderSelect">
+                <option value="newest">Neueste zuerst</option>
+                <option value="oldest">Älteste zuerst</option>
+                <option value="rarity">Seltenheit zuerst</option>
               </select>
             </label>
             <label>

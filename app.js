@@ -2,10 +2,10 @@ const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
 
 const storageKeys = {
-  archive: 'critter.archive.v2',
-  settings: 'critter.settings.v2',
-  progression: 'critter.progress.v2',
-  auth: 'critter.auth.v2',
+  archive: 'critter.archive.v3',
+  settings: 'critter.settings.v3',
+  progression: 'critter.progress.v3',
+  auth: 'critter.auth.v3',
 };
 
 const defaults = {
@@ -17,6 +17,11 @@ const defaults = {
     funMean: 70,
     cuteUgly: 60,
     cleanGrimy: 40,
+    apiBaseUrl: 'https://api.example.invalid/transform',
+    oauthProvider: 'google',
+    apiKeyHint: 'lokaler-platzhalter',
+    autoSaveBehavior: 'ask',
+    sortOrder: 'newest',
   },
   progression: { level: 1, xp: 0, totalXp: 0, legendaryCount: 0 },
 };
@@ -80,6 +85,8 @@ const state = {
   rarityHistory: [],
   activeFilter: 'all',
   selectedArchiveId: null,
+  cameraFacingMode: 'user',
+  comparingAfter: true,
 };
 
 init();
@@ -107,6 +114,7 @@ function bindCoreActions() {
   $('#startScanBtn').addEventListener('click', openCameraFlow);
   $('#quickScanBtn').addEventListener('click', openCameraFlow);
   $('#cameraCancelBtn').addEventListener('click', () => showScreen('home'));
+  $('#switchCameraBtn').addEventListener('click', switchCamera);
   $('#captureBtn').addEventListener('click', capturePhoto);
   $('#retakeBtn').addEventListener('click', openCameraFlow);
   $('#usePhotoBtn').addEventListener('click', runAnalysis);
@@ -120,6 +128,8 @@ function bindCoreActions() {
   $('#viewDetailBtn').addEventListener('click', openCurrentResultDetail);
   $('#backToArchiveBtn').addEventListener('click', () => showScreen('archive'));
   $('#deleteEntryBtn').addEventListener('click', deleteSelectedEntry);
+  $('#compareToggleBtn').addEventListener('click', toggleCompareImage);
+  $('#shareEntryBtn').addEventListener('click', shareSelectedEntry);
 
   $$('.ghost-btn[data-open]').forEach((btn) => {
     btn.addEventListener('click', () => showScreen(btn.dataset.open));
@@ -134,6 +144,11 @@ function bindSettings() {
   $('#funMeanRange').value = String(state.settings.funMean);
   $('#cuteUglyRange').value = String(state.settings.cuteUgly);
   $('#cleanGrimyRange').value = String(state.settings.cleanGrimy);
+  $('#apiBaseUrlInput').value = state.settings.apiBaseUrl;
+  $('#oauthProviderSelect').value = state.settings.oauthProvider;
+  $('#apiKeyHintInput').value = state.settings.apiKeyHint;
+  $('#autoSaveSelect').value = state.settings.autoSaveBehavior;
+  $('#sortOrderSelect').value = state.settings.sortOrder;
 
   $('#hitRateSelect').addEventListener('change', (e) => updateSetting('hitRate', e.target.value));
   $('#paceSelect').addEventListener('change', (e) => updateSetting('pace', e.target.value));
@@ -142,6 +157,14 @@ function bindSettings() {
   $('#funMeanRange').addEventListener('input', (e) => updateSetting('funMean', Number(e.target.value)));
   $('#cuteUglyRange').addEventListener('input', (e) => updateSetting('cuteUgly', Number(e.target.value)));
   $('#cleanGrimyRange').addEventListener('input', (e) => updateSetting('cleanGrimy', Number(e.target.value)));
+  $('#apiBaseUrlInput').addEventListener('change', (e) => updateSetting('apiBaseUrl', e.target.value.trim()));
+  $('#oauthProviderSelect').addEventListener('change', (e) => updateSetting('oauthProvider', e.target.value));
+  $('#apiKeyHintInput').addEventListener('change', (e) => updateSetting('apiKeyHint', e.target.value.trim()));
+  $('#autoSaveSelect').addEventListener('change', (e) => updateSetting('autoSaveBehavior', e.target.value));
+  $('#sortOrderSelect').addEventListener('change', (e) => {
+    updateSetting('sortOrder', e.target.value);
+    renderArchive();
+  });
 
   $('#authToggleBtn').addEventListener('click', () => {
     state.authenticated = !state.authenticated;
@@ -188,15 +211,27 @@ async function openCameraFlow() {
 
   try {
     state.cameraStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+      video: {
+        facingMode: { ideal: state.cameraFacingMode },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
       audio: false,
     });
     video.srcObject = state.cameraStream;
+    $('#switchCameraBtn').disabled = false;
   } catch {
     state.cameraStream = null;
     video.style.display = 'none';
+    $('#switchCameraBtn').disabled = true;
     $('#stateText').textContent = 'STATUS: KAMERA_FALLBACK';
   }
+}
+
+async function switchCamera() {
+  state.cameraFacingMode = state.cameraFacingMode === 'user' ? 'environment' : 'user';
+  $('#cameraModeLabel').textContent = state.cameraFacingMode === 'user' ? 'Frontkamera' : 'Rückkamera';
+  await openCameraFlow();
 }
 
 function stopCamera() {
@@ -275,6 +310,7 @@ function produceResult() {
     model: state.settings.model,
     prompt: buildPrompt(),
     traits: buildTraits(),
+    lore: buildLore(type, rarity),
   };
 
   updateResultScreen();
@@ -296,8 +332,8 @@ function updateResultScreen() {
   } else if (result.type === 'suspect') {
     title.textContent = 'Verdächtige Signatur';
     meta.textContent = `Mögliche Glamour-Rückstände (${result.anomalyScore}%).`;
-    primary.textContent = 'Neu scannen';
-    primary.onclick = openCameraFlow;
+    primary.textContent = 'Verdacht transformieren';
+    primary.onclick = () => startTransform(0);
   } else {
     title.textContent = 'Kobold entdeckt';
     meta.textContent = `${result.koboldClass} // Seltenheit ${rarityLabels[result.rarity]} // Wert ${result.anomalyScore}%`;
@@ -341,8 +377,10 @@ function startTransform(attempt = 0) {
 
 function getTransformGuardError() {
   if (!navigator.onLine) return 'Transformation nicht möglich: Offline-Modus ist aktiv.';
-  if (!state.authenticated) return 'Transformation erfordert eine OAuth-Verbindung in den Einstellungen.';
+  if (!state.authenticated) return `Transformation erfordert eine OAuth-Verbindung (${state.settings.oauthProvider}) in den Einstellungen.`;
   if (!state.settings.model) return 'Bitte zuerst ein Modell in den Einstellungen auswählen.';
+  if (!state.settings.apiBaseUrl) return 'Bitte zuerst eine API-Basis-URL in den Einstellungen hinterlegen.';
+  if (!state.settings.apiKeyHint) return 'Bitte zuerst einen API-Schlüssel-Platzhalter in den Einstellungen hinterlegen.';
   return '';
 }
 
@@ -358,7 +396,13 @@ function finishTransform() {
   state.currentResult.transformedImage = transformed;
   $('#beforeImage').src = state.captureDataUrl;
   $('#afterImage').src = transformed;
+  state.comparingAfter = true;
+  $('#compareToggleBtn').textContent = 'Vorher anzeigen';
   showScreen('transformResult');
+
+  if (state.settings.autoSaveBehavior === 'always') {
+    saveCurrentResult(true);
+  }
 }
 
 function buildTransformedImage(baseDataUrl, rarity) {
@@ -388,6 +432,13 @@ function buildTransformedImage(baseDataUrl, rarity) {
   return canvas.toDataURL('image/jpeg', 0.9);
 }
 
+function toggleCompareImage() {
+  state.comparingAfter = !state.comparingAfter;
+  $('#afterImage').style.display = state.comparingAfter ? 'block' : 'none';
+  $('#beforeImage').style.display = state.comparingAfter ? 'none' : 'block';
+  $('#compareToggleBtn').textContent = state.comparingAfter ? 'Vorher anzeigen' : 'Nachher anzeigen';
+}
+
 function openCurrentResultDetail() {
   if (!state.currentResult) return;
   renderDetail(state.currentResult);
@@ -412,6 +463,7 @@ function renderDetail(entry) {
     <label><strong>Modell</strong><span>${entry.model || '–'}</span></label>
     <label><strong>Datum</strong><span>${new Date(entry.createdAt).toLocaleString('de-DE')}</span></label>
     <label><strong>Traits</strong><span>${entry.traits ? entry.traits.join(', ') : '–'}</span></label>
+    <label><strong>Lore</strong><span>${entry.lore || '–'}</span></label>
   `;
 }
 
@@ -446,10 +498,19 @@ function saveCurrentResult(fromTransform) {
 
 function renderArchive() {
   const grid = $('#archiveGrid');
-  const list = state.archive.filter((entry) => {
+  const filtered = state.archive.filter((entry) => {
     if (state.activeFilter === 'all') return true;
     if (state.activeFilter === 'rare') return ['rare', 'epic', 'legendary'].includes(entry.rarity);
     return entry.type === state.activeFilter;
+  });
+
+  const list = [...filtered].sort((a, b) => {
+    if (state.settings.sortOrder === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
+    if (state.settings.sortOrder === 'rarity') {
+      const order = { legendary: 5, epic: 4, rare: 3, uncommon: 2, common: 1, null: 0 };
+      return (order[b.rarity] || 0) - (order[a.rarity] || 0);
+    }
+    return new Date(b.createdAt) - new Date(a.createdAt);
   });
 
   if (!list.length) {
@@ -473,6 +534,31 @@ function renderArchive() {
   $$('#archiveGrid .archive-card').forEach((card) => {
     card.addEventListener('click', () => openArchiveDetail(card.dataset.openId));
   });
+}
+
+async function shareSelectedEntry() {
+  const entry = state.archive.find((item) => item.id === state.selectedArchiveId);
+  if (!entry) return;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: 'Critter Switch Fund',
+        text: `${typeLabels[entry.type]} – ${entry.koboldClass || 'Scan-Ergebnis'}`,
+        url: window.location.href,
+      });
+    } catch {
+      // Nutzerabbruch ignorieren
+    }
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(window.location.href);
+    $('#stateText').textContent = 'STATUS: LINK_IN_ZWISCHENABLAGE';
+  } catch {
+    $('#stateText').textContent = 'STATUS: TEILEN_NICHT_VERFÜGBAR';
+  }
 }
 
 function updateProgressionUi() {
@@ -588,10 +674,20 @@ function buildTraits() {
   return traits;
 }
 
+function buildLore(type, rarity) {
+  if (type !== 'kobold') return 'Kein Kobold-Lore-Eintrag vorhanden.';
+  const rarityText = rarityLabels[rarity] || 'Häufig';
+  return `${rarityText}er Feldbericht: Sichtung im Bereich alter Dachbalken, reagiert auf Neonlicht und Süßigkeiten.`;
+}
+
 function load(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(fallback)) return Array.isArray(parsed) ? parsed : fallback;
+    if (fallback && typeof fallback === 'object') return { ...fallback, ...parsed };
+    return parsed;
   } catch {
     return fallback;
   }

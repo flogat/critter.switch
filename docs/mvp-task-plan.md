@@ -62,9 +62,9 @@
 
 ## Backlog nach MVP
 - [ ] mehr Kobold-Klassen und Lore-Generator
-- [ ] stärkere Archive-Filter und Sortierung
-- [ ] animierter Before/After Vergleich
-- [ ] lokaler Export/Share
+- [x] stärkere Archive-Filter und Sortierung
+- [x] umschaltbarer Before/After Vergleich
+- [x] lokaler Share-Fallback (Web Share API / Zwischenablage-Link)
 - [ ] zusätzliche Stil-Presets
 
 ## Definition of Done (MVP)
