@@ -19,7 +19,7 @@ const defaults = {
     cleanGrimy: 40,
     apiBaseUrl: 'https://api.example.invalid/transform',
     oauthProvider: 'google',
-    apiKeyHint: 'lokaler-platzhalter',
+    oauthClientId: '',
     autoSaveBehavior: 'ask',
     sortOrder: 'newest',
   },
@@ -87,6 +87,8 @@ const state = {
   selectedArchiveId: null,
   cameraFacingMode: 'user',
   comparingAfter: true,
+  oauthAccessToken: '',
+  oauthExpiresAt: 0,
 };
 
 init();
@@ -146,7 +148,7 @@ function bindSettings() {
   $('#cleanGrimyRange').value = String(state.settings.cleanGrimy);
   $('#apiBaseUrlInput').value = state.settings.apiBaseUrl;
   $('#oauthProviderSelect').value = state.settings.oauthProvider;
-  $('#apiKeyHintInput').value = state.settings.apiKeyHint;
+  $('#oauthClientIdInput').value = state.settings.oauthClientId;
   $('#autoSaveSelect').value = state.settings.autoSaveBehavior;
   $('#sortOrderSelect').value = state.settings.sortOrder;
 
@@ -159,19 +161,21 @@ function bindSettings() {
   $('#cleanGrimyRange').addEventListener('input', (e) => updateSetting('cleanGrimy', Number(e.target.value)));
   $('#apiBaseUrlInput').addEventListener('change', (e) => updateSetting('apiBaseUrl', e.target.value.trim()));
   $('#oauthProviderSelect').addEventListener('change', (e) => updateSetting('oauthProvider', e.target.value));
-  $('#apiKeyHintInput').addEventListener('change', (e) => updateSetting('apiKeyHint', e.target.value.trim()));
+  $('#oauthClientIdInput').addEventListener('change', (e) => updateSetting('oauthClientId', e.target.value.trim()));
   $('#autoSaveSelect').addEventListener('change', (e) => updateSetting('autoSaveBehavior', e.target.value));
   $('#sortOrderSelect').addEventListener('change', (e) => {
     updateSetting('sortOrder', e.target.value);
     renderArchive();
   });
 
-  $('#authToggleBtn').addEventListener('click', () => {
-    state.authenticated = !state.authenticated;
-    persist(storageKeys.auth, state.authenticated);
-    $('#authToggleBtn').textContent = state.authenticated ? 'Trennen' : 'Verbinden';
+  $('#authToggleBtn').addEventListener('click', async () => {
+    if (state.authenticated) {
+      disconnectGoogleOAuth();
+      return;
+    }
+    await connectGoogleOAuth();
   });
-  $('#authToggleBtn').textContent = state.authenticated ? 'Trennen' : 'Verbinden';
+  renderAuthButton();
 }
 
 function bindFilters() {
@@ -342,7 +346,7 @@ function updateResultScreen() {
   }
 }
 
-function startTransform(attempt = 0) {
+async function startTransform(attempt = 0) {
   const guardError = getTransformGuardError();
   if (guardError) {
     showTransformError(guardError, false);
@@ -351,28 +355,35 @@ function startTransform(attempt = 0) {
 
   showScreen('transform');
   $('#transformProgress').style.width = '0%';
-  let progress = 0;
-  const shouldFail = Math.random() < 0.15 && attempt < 2;
+  let progress = 5;
+  let settled = false;
 
   const job = setInterval(() => {
-    progress += 8 + Math.random() * 15;
-    $('#transformProgress').style.width = `${Math.min(100, progress)}%`;
+    progress = Math.min(92, progress + 4 + Math.random() * 8);
+    $('#transformProgress').style.width = `${progress}%`;
     $('#transformStatus').textContent =
       progress < 45
         ? 'Stil-Prompt wird komponiert ...'
         : progress < 80
-          ? 'Kobold-Merkmale werden gerendert ...'
+          ? 'Nano Banana 2 rendert Transformation ...'
           : 'Bildausgabe wird finalisiert ...';
-
-    if (progress >= 100) {
-      clearInterval(job);
-      if (shouldFail) {
-        showTransformError('Die API hat ein Timeout gemeldet. Bitte erneut versuchen.', true);
-        return;
-      }
-      finishTransform();
-    }
   }, 300);
+
+  try {
+    const transformed = await requestTransformFromApi();
+    settled = true;
+    clearInterval(job);
+    $('#transformProgress').style.width = '100%';
+    $('#transformStatus').textContent = 'Transformation abgeschlossen.';
+    finishTransform(transformed);
+  } catch (error) {
+    settled = true;
+    clearInterval(job);
+    const fallbackMessage = attempt < 2 ? 'Bitte erneut versuchen.' : 'Bitte Einstellungen prüfen und später erneut versuchen.';
+    showTransformError(`${error.message || 'Transformation fehlgeschlagen.'} ${fallbackMessage}`, attempt < 2);
+  } finally {
+    if (!settled) clearInterval(job);
+  }
 }
 
 function getTransformGuardError() {
@@ -380,7 +391,12 @@ function getTransformGuardError() {
   if (!state.authenticated) return `Transformation erfordert eine OAuth-Verbindung (${state.settings.oauthProvider}) in den Einstellungen.`;
   if (!state.settings.model) return 'Bitte zuerst ein Modell in den Einstellungen auswählen.';
   if (!state.settings.apiBaseUrl) return 'Bitte zuerst eine API-Basis-URL in den Einstellungen hinterlegen.';
-  if (!state.settings.apiKeyHint) return 'Bitte zuerst einen API-Schlüssel-Platzhalter in den Einstellungen hinterlegen.';
+  if (state.settings.oauthProvider === 'google' && !state.settings.oauthClientId) {
+    return 'Bitte zuerst eine Google OAuth Client-ID in den Einstellungen hinterlegen.';
+  }
+  if (state.settings.oauthProvider === 'google' && !hasValidOAuthToken()) {
+    return 'Google OAuth ist abgelaufen. Bitte neu verbinden.';
+  }
   return '';
 }
 
@@ -390,8 +406,7 @@ function showTransformError(message, retryAllowed) {
   showScreen('transformError');
 }
 
-function finishTransform() {
-  const transformed = buildTransformedImage(state.captureDataUrl, state.currentResult.rarity || 'common');
+function finishTransform(transformed) {
   state.transformDataUrl = transformed;
   state.currentResult.transformedImage = transformed;
   $('#beforeImage').src = state.captureDataUrl;
@@ -403,33 +418,6 @@ function finishTransform() {
   if (state.settings.autoSaveBehavior === 'always') {
     saveCurrentResult(true);
   }
-}
-
-function buildTransformedImage(baseDataUrl, rarity) {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = 960;
-  canvas.height = 540;
-
-  ctx.fillStyle = '#121f38';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#b977ff';
-  ctx.font = 'bold 58px Orbitron';
-  ctx.fillText('KOBOLD-ENTTARNUNG', 180, 150);
-  ctx.fillStyle = '#b9ff6f';
-  ctx.font = 'bold 34px Orbitron';
-  ctx.fillText(`SELTENHEIT: ${rarityLabels[rarity].toUpperCase()}`, 260, 220);
-  ctx.font = '28px Space Grotesk';
-  ctx.fillStyle = '#e6ebf5';
-  ctx.fillText(`STIL: ${state.settings.style.toUpperCase()}`, 290, 285);
-  ctx.fillText(`MODELL: ${state.settings.model}`, 290, 330);
-  ctx.fillText('Identitätsanker erhalten // familienfreundliche Transformation', 140, 390);
-
-  if (baseDataUrl) {
-    const img = new Image();
-    img.src = baseDataUrl;
-  }
-  return canvas.toDataURL('image/jpeg', 0.9);
 }
 
 function toggleCompareImage() {
@@ -664,6 +652,129 @@ function buildPrompt() {
   const clean = state.settings.cleanGrimy / 100;
 
   return `Transformiere das fotografierte menschliche Subjekt in einen ${state.settings.style}-Kobold, halte Pose und Bildausschnitt stabil, bewahre erkennbare Identitätsanker, familienfreundlich ohne Horror. Stimmung: Spaß ${fun.toFixed(2)}, Süße ${cute.toFixed(2)}, Sauberkeit ${clean.toFixed(2)}.`;
+}
+
+async function connectGoogleOAuth() {
+  if (state.settings.oauthProvider !== 'google') {
+    state.authenticated = true;
+    persist(storageKeys.auth, state.authenticated);
+    renderAuthButton();
+    return;
+  }
+  if (!state.settings.oauthClientId) {
+    showTransformError('Bitte zuerst eine Google OAuth Client-ID in den Einstellungen hinterlegen.', false);
+    return;
+  }
+  if (!window.google?.accounts?.oauth2) {
+    showTransformError('Google OAuth Skript konnte nicht geladen werden. Bitte Seite neu laden.', false);
+    return;
+  }
+
+  const tokenClient = window.google.accounts.oauth2.initTokenClient({
+    client_id: state.settings.oauthClientId,
+    scope: 'https://www.googleapis.com/auth/generative-language',
+    callback: (tokenResponse) => {
+      if (!tokenResponse?.access_token) {
+        showTransformError('Google OAuth konnte kein Access-Token liefern.', false);
+        return;
+      }
+      state.oauthAccessToken = tokenResponse.access_token;
+      state.oauthExpiresAt = Date.now() + Math.max(30, Number(tokenResponse.expires_in || 0)) * 1000;
+      state.authenticated = true;
+      persist(storageKeys.auth, true);
+      renderAuthButton();
+      $('#stateText').textContent = 'STATUS: GOOGLE_OAUTH_VERBUNDEN';
+    },
+  });
+
+  tokenClient.requestAccessToken({ prompt: 'consent' });
+}
+
+function disconnectGoogleOAuth() {
+  if (window.google?.accounts?.oauth2 && state.oauthAccessToken) {
+    window.google.accounts.oauth2.revoke(state.oauthAccessToken, () => {});
+  }
+  state.oauthAccessToken = '';
+  state.oauthExpiresAt = 0;
+  state.authenticated = false;
+  persist(storageKeys.auth, false);
+  renderAuthButton();
+}
+
+function hasValidOAuthToken() {
+  return Boolean(state.oauthAccessToken) && Date.now() < state.oauthExpiresAt - 15_000;
+}
+
+function renderAuthButton() {
+  const btn = $('#authToggleBtn');
+  if (!btn) return;
+  btn.textContent = state.authenticated ? 'Google trennen' : 'Google verbinden';
+}
+
+async function requestTransformFromApi() {
+  const endpoint = state.settings.apiBaseUrl;
+  const payload = buildGoogleTransformPayload();
+  const headers = { 'Content-Type': 'application/json' };
+  if (state.settings.oauthProvider === 'google' && state.oauthAccessToken) {
+    headers.Authorization = `Bearer ${state.oauthAccessToken}`;
+  }
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => '');
+    throw new Error(`Transform-API Fehler ${response.status}${details ? `: ${details.slice(0, 140)}` : ''}`);
+  }
+
+  const data = await response.json();
+  const dataUrl = extractImageDataUrl(data);
+  if (!dataUrl) throw new Error('Keine Bilddaten in der API-Antwort gefunden.');
+  return dataUrl;
+}
+
+function buildGoogleTransformPayload() {
+  const base64Image = (state.captureDataUrl || '').split(',')[1] || '';
+  return {
+    model: state.settings.model,
+    prompt: buildPrompt(),
+    image: {
+      mimeType: 'image/jpeg',
+      data: base64Image,
+    },
+    knobs: {
+      funMean: state.settings.funMean,
+      cuteUgly: state.settings.cuteUgly,
+      cleanGrimy: state.settings.cleanGrimy,
+    },
+  };
+}
+
+function extractImageDataUrl(data) {
+  if (!data || typeof data !== 'object') return '';
+
+  if (typeof data.imageDataUrl === 'string' && data.imageDataUrl.startsWith('data:image/')) {
+    return data.imageDataUrl;
+  }
+
+  if (typeof data.imageBase64 === 'string' && data.imageBase64.length > 24) {
+    return `data:image/jpeg;base64,${data.imageBase64}`;
+  }
+
+  const inlineData =
+    data?.candidates?.[0]?.content?.parts?.find((part) => part?.inlineData?.data)?.inlineData ||
+    data?.predictions?.[0]?.bytesBase64Encoded;
+
+  if (typeof inlineData === 'object' && inlineData?.data) {
+    return `data:${inlineData.mimeType || 'image/png'};base64,${inlineData.data}`;
+  }
+  if (typeof inlineData === 'string') {
+    return `data:image/png;base64,${inlineData}`;
+  }
+  return '';
 }
 
 function buildTraits() {

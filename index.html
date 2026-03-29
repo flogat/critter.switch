@@ -212,8 +212,8 @@
               </select>
             </label>
             <label>
-              API-Schlüssel-Hinweis (Platzhalter)
-              <input id="apiKeyHintInput" type="text" />
+              Google OAuth Client-ID
+              <input id="oauthClientIdInput" type="text" placeholder="1234567890-abc123.apps.googleusercontent.com" />
             </label>
             <label>
               Auto-Speichern
@@ -244,14 +244,17 @@
             </label>
             <label>
               OAuth / API
-              <button id="authToggleBtn" class="ghost-btn in-field">Verbinden</button>
+              <button id="authToggleBtn" class="ghost-btn in-field">Google verbinden</button>
             </label>
           </div>
-          <p class="muted">Bilder bleiben lokal; nur ausgewählte Kobold-Aufnahmen werden für die Transformation genutzt.</p>
+          <p class="muted">
+            Für echte KI-Transformation: Google OAuth verbinden und eine Google-kompatible Transform-API in der Basis-URL hinterlegen.
+          </p>
         </section>
       </main>
     </div>
 
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="app.js"></script>
     <script src="pwa-register.js"></script>
   </body>
