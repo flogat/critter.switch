@@ -144,7 +144,7 @@ function bindSettings() {
   $('#funMeanRange').value = String(state.settings.funMean);
   $('#cuteUglyRange').value = String(state.settings.cuteUgly);
   $('#cleanGrimyRange').value = String(state.settings.cleanGrimy);
-  $('#apiBaseUrlInput').value = state.settings.apiBaseUrl;
+  $('#apiBaseUrlInput').value = getEffectiveApiBaseUrl();
   $('#authModeSelect').value = state.settings.authMode;
   $('#apiKeyInput').value = state.settings.apiKey;
   $('#autoSaveSelect').value = state.settings.autoSaveBehavior;
@@ -382,7 +382,6 @@ async function startTransform(attempt = 0) {
 function getTransformGuardError() {
   if (!navigator.onLine) return 'Transformation nicht möglich: Offline-Modus ist aktiv.';
   if (!state.settings.model) return 'Bitte zuerst ein Modell in den Einstellungen auswählen.';
-  if (!state.settings.apiBaseUrl) return 'Bitte zuerst eine API-Basis-URL in den Einstellungen hinterlegen.';
   if (state.settings.authMode === 'apiKey' && !state.settings.apiKey) {
     return 'Bitte zuerst einen Google API Key in den Einstellungen hinterlegen.';
   }
@@ -644,7 +643,7 @@ function buildPrompt() {
 }
 
 async function requestTransformFromApi() {
-  const endpoint = withGoogleApiKey(resolveGeminiEndpoint(state.settings.apiBaseUrl, state.settings.model), state.settings.apiKey);
+  const endpoint = withGoogleApiKey(resolveGeminiEndpoint(getEffectiveApiBaseUrl(), state.settings.model), state.settings.apiKey);
   const payload = buildGoogleTransformPayload();
   const headers = { 'Content-Type': 'application/json' };
   if (state.settings.authMode === 'apiKey' && state.settings.apiKey) {
@@ -666,6 +665,10 @@ async function requestTransformFromApi() {
   const dataUrl = extractImageDataUrl(data);
   if (!dataUrl) throw new Error('Keine Bilddaten in der API-Antwort gefunden.');
   return dataUrl;
+}
+
+function getEffectiveApiBaseUrl() {
+  return state.settings.apiBaseUrl?.trim() || defaults.settings.apiBaseUrl;
 }
 
 
