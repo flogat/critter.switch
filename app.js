@@ -85,6 +85,7 @@ const state = {
   activeFilter: 'all',
   selectedArchiveId: null,
   cameraFacingMode: 'user',
+  preferredCameraDeviceId: '',
   comparingAfter: true,
   captureWidth: 0,
   captureHeight: 0,
@@ -102,7 +103,10 @@ function init() {
 
   window.addEventListener('online', updateNetworkBadge);
   window.addEventListener('offline', updateNetworkBadge);
+  window.addEventListener('orientationchange', handleOrientationChange);
+  window.addEventListener('resize', handleOrientationChange);
   updateNetworkBadge();
+  handleOrientationChange();
 }
 
 function bindNav() {
@@ -214,20 +218,18 @@ async function openCameraFlow() {
   showScreen('camera');
   const video = $('#cameraVideo');
   video.style.display = 'block';
+  stopCamera();
 
   try {
-    state.cameraStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: state.cameraFacingMode },
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-      },
-      audio: false,
-    });
+    state.cameraStream = await requestCameraStream();
     video.srcObject = state.cameraStream;
+    await video.play().catch(() => {});
+    if (!video.videoWidth || !video.videoHeight) throw new Error('Kamera liefert kein Bildsignal.');
     $('#switchCameraBtn').disabled = false;
+    $('#stateText').textContent = 'STATUS: KAMERA_BEREIT';
   } catch {
     state.cameraStream = null;
+    video.srcObject = null;
     video.style.display = 'none';
     $('#switchCameraBtn').disabled = true;
     $('#stateText').textContent = 'STATUS: KAMERA_FALLBACK';
@@ -241,9 +243,73 @@ async function switchCamera() {
 }
 
 function stopCamera() {
+  const video = $('#cameraVideo');
+  if (video) video.srcObject = null;
   if (!state.cameraStream) return;
   state.cameraStream.getTracks().forEach((track) => track.stop());
   state.cameraStream = null;
+}
+
+async function requestCameraStream() {
+  if (!navigator.mediaDevices?.getUserMedia) throw new Error('getUserMedia nicht verfügbar');
+  const constraints = await buildCameraConstraintSequence();
+  let lastError;
+
+  for (const videoConstraint of constraints) {
+    try {
+      return await navigator.mediaDevices.getUserMedia({ video: videoConstraint, audio: false });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error('Kein Kamera-Stream verfügbar');
+}
+
+async function buildCameraConstraintSequence() {
+  const base = {
+    width: { ideal: 1920 },
+    height: { ideal: 1080 },
+  };
+  const sequence = [];
+  const wantedFacing = state.cameraFacingMode;
+
+  if (state.preferredCameraDeviceId) {
+    sequence.push({ ...base, deviceId: { exact: state.preferredCameraDeviceId } });
+  }
+
+  sequence.push({ ...base, facingMode: { exact: wantedFacing } });
+  sequence.push({ ...base, facingMode: { ideal: wantedFacing } });
+
+  const matchingDeviceId = await findCameraDeviceIdForFacingMode(wantedFacing);
+  if (matchingDeviceId) {
+    state.preferredCameraDeviceId = matchingDeviceId;
+    sequence.unshift({ ...base, deviceId: { exact: matchingDeviceId } });
+  }
+
+  sequence.push({ ...base });
+  sequence.push(true);
+  return sequence;
+}
+
+async function findCameraDeviceIdForFacingMode(facingMode) {
+  if (!navigator.mediaDevices?.enumerateDevices) return '';
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videos = devices.filter((device) => device.kind === 'videoinput');
+    if (!videos.length) return '';
+
+    const facingHint = facingMode === 'environment' ? /(back|rear|environment|rück)/i : /(front|user|self|face|vorn)/i;
+    const hinted = videos.find((device) => facingHint.test(device.label || ''));
+    return (hinted || videos[0]).deviceId || '';
+  } catch {
+    return '';
+  }
+}
+
+function handleOrientationChange() {
+  const landscape = window.matchMedia('(orientation: landscape)').matches;
+  document.body.classList.toggle('is-portrait', !landscape);
 }
 
 function capturePhoto() {

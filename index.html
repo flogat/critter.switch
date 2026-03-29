@@ -39,6 +39,7 @@
         <nav>
           <button class="nav-item active" data-nav="home">Scanner</button>
           <button class="nav-item" data-nav="archive">Archiv</button>
+          <button class="nav-item" data-nav="settings">Einstellungen</button>
         </nav>
 
         <button id="quickScanBtn" class="primary-btn">Check starten</button>
@@ -65,7 +66,7 @@
         <section class="screen media-screen" data-screen="camera">
           <button id="cameraSettingsBtn" class="camera-settings-btn" aria-label="Einstellungen öffnen">⚙</button>
           <p id="cameraModeLabel" class="muted camera-mode-label">Frontkamera</p>
-          <video id="cameraVideo" autoplay playsinline></video>
+          <video id="cameraVideo" autoplay playsinline muted></video>
           <canvas id="captureCanvas" width="640" height="360" hidden></canvas>
           <div class="cta-row camera-controls">
             <button id="switchCameraBtn" class="ghost-btn">Kamera wechseln</button>
