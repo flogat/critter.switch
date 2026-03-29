@@ -1,0 +1,20 @@
+{
+  "name": "Critter Switch",
+  "short_name": "CritterSwitch",
+  "description": "Neon scanner prototype for critter detection and transformation.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#05070e",
+  "theme_color": "#05070e",
+  "lang": "de",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
